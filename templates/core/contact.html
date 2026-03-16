@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Contact - BookVibe{% endblock %}
+
+{% block content %}
+<section class="row g-4 align-items-stretch">
+    <div class="col-lg-7">
+        <div class="panel-card h-100">
+            <p class="text-uppercase small-muted mb-2">Get in touch</p>
+            <h1 class="section-title h3 mb-3">Contact the BookVibe team</h1>
+            <p class="section-subtitle">Need help with your account, reviews, or recommendations? Use the details below and we will point you in the right direction.</p>
+            <div class="row g-3 mt-1">
+                <div class="col-md-6">
+                    <div class="stat-card h-100">
+                        <div class="stat-kicker">Email</div>
+                        <div class="stat-value">support@bookvibe.com</div>
+                        <p class="small-muted mb-0">Best for sign-in issues, book data corrections, or general support.</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="stat-card h-100">
+                        <div class="stat-kicker">Phone</div>
+                        <div class="stat-value">+44 141 555 0123</div>
+                        <p class="small-muted mb-0">Available Monday to Friday, 9am to 5pm.</p>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="stat-card h-100">
+                        <div class="stat-kicker">Address</div>
+                        <div class="stat-value">123 Reading Lane, Glasgow, UK</div>
+                        <p class="small-muted mb-0">For postal queries, partnerships, and editorial enquiries.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="panel-card h-100">
+            <p class="text-uppercase small-muted mb-2">Common requests</p>
+            <h2 class="h4 mb-3">What we can help with</h2>
+            <div class="d-grid gap-3">
+                <div class="comment-mini-card"><strong>Account support</strong><br><span class="small-muted">Password resets, registration issues, or profile access questions.</span></div>
+                <div class="comment-mini-card"><strong>Book data updates</strong><br><span class="small-muted">Corrections to titles, authors, categories, or cover images.</span></div>
+                <div class="comment-mini-card"><strong>Technical help</strong><br><span class="small-muted">Problems with ratings, comments, or recommendation features.</span></div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

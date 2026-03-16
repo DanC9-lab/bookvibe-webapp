@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}AI Chat - BookVibe{% endblock %}
+
+{% block content %}
+<section class="chat-shell overflow-hidden">
+    <div class="chat-banner">
+        <div class="row g-4 align-items-center">
+            <div class="col-lg-8">
+                <p class="text-uppercase small mb-2 opacity-75">BookVibe AI</p>
+                <h1 class="display-6 fw-bold mb-2">Ask for recommendations in plain language.</h1>
+                <p class="mb-0 opacity-75">Try prompts like “Recommend a comforting fantasy novel” or “What should I read if I liked Sherlock Holmes?”</p>
+            </div>
+            <div class="col-lg-4">
+                <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                    <button type="button" class="quick-link-chip js-chat-prompt" data-prompt="Recommend a fantasy book with strong worldbuilding.">Fantasy</button>
+                    <button type="button" class="quick-link-chip js-chat-prompt" data-prompt="What are the highest-rated books on this site?">Top rated</button>
+                    <button type="button" class="quick-link-chip js-chat-prompt" data-prompt="Suggest a short and easy book to get me out of a reading slump.">Short reads</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="chat-log" class="chat-log" role="log" aria-label="Chat messages">
+        <div class="chat-message ai-message">
+            <div class="message-bubble">
+                Hi! I can help you explore the catalogue, highlight top-rated books, or suggest something by genre, mood, or reading pace.
+            </div>
+        </div>
+    </div>
+    <div class="p-3 p-lg-4 border-top bg-white">
+        <form id="chat-form" data-url="{% url 'core:get_ai_response' %}">
+            {% csrf_token %}
+            <label for="chat-message-input" class="form-label">Message BookVibe AI</label>
+            <div class="input-group input-group-lg">
+                <input type="text" id="chat-message-input" class="form-control" placeholder="Describe the kind of book you want..." required autocomplete="off">
+                <button class="btn btn-gradient" type="submit">Send</button>
+            </div>
+            <p class="small-muted mt-2 mb-0">If live recommendations are unavailable, BookVibe will still use the catalogue to offer suggestions from the books currently on the site.</p>
+        </form>
+    </div>
+</section>
+{% endblock %}

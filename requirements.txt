@@ -1,0 +1,7 @@
+Django>=4.2,<6
+gunicorn
+whitenoise
+dj-database-url
+psycopg2-binary
+Pillow
+requests
