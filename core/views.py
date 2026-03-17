@@ -17,10 +17,12 @@ from django.views.generic import CreateView, ListView, TemplateView, UpdateView
 from .forms import BookForm, CategoryForm, CommentForm, RatingForm, RegistrationForm
 from .models import Book, Category, Comment, Rating
 
-
 logger = logging.getLogger(__name__)
 
 
+# =========================================================
+# Utility: Admin Check
+# =========================================================
 def is_admin(user):
     return user.is_superuser or user.is_staff
 
@@ -30,9 +32,9 @@ class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
         return is_admin(self.request.user)
 
 
-# =========================
-# Book List
-# =========================
+# =========================================================
+# Book List View (Search, Filter, Sort)
+# =========================================================
 class BookListView(ListView):
     model = Book
     template_name = 'core/book_list.html'
@@ -121,9 +123,9 @@ class BookListView(ListView):
         return context
 
 
-# =========================
-# Book Detail
-# =========================
+# =========================================================
+# Book Detail View
+# =========================================================
 class BookDetailView(View):
     def get(self, request, pk):
         book = get_object_or_404(
@@ -135,6 +137,7 @@ class BookDetailView(View):
         comments = book.comments.all()
         ratings = list(book.ratings.all())
 
+        # ⭐ Safe average calculation
         avg_rating = round(sum(r.rating for r in ratings) / len(ratings), 1) if ratings else 0.0
         rating_count = len(ratings)
 
@@ -150,10 +153,6 @@ class BookDetailView(View):
             .order_by('-avg_rating', '-rating_count')[:4]
         )
 
-        description_word_count = len((book.description or '').split())
-        estimated_read_minutes = max(1, round(description_word_count / 200))
-        score_degrees = round((avg_rating / 5) * 360) if avg_rating else 0
-
         context = {
             'book': book,
             'avg_rating': avg_rating,
@@ -163,16 +162,14 @@ class BookDetailView(View):
             'comment_form': CommentForm(),
             'recommendations': recommendations,
             'user_rating': user_rating,
-            'estimated_read_minutes': estimated_read_minutes,
-            'score_degrees': score_degrees,
         }
 
         return render(request, 'core/book_detail.html', context)
 
 
-# =========================
-# Auth
-# =========================
+# =========================================================
+# Authentication
+# =========================================================
 class RegistrationView(View):
     def get(self, request):
         return render(request, 'registration/register.html', {'form': RegistrationForm()})
@@ -189,9 +186,9 @@ class RegistrationView(View):
         return render(request, 'registration/register.html', {'form': form})
 
 
-# =========================
+# =========================================================
 # Static Pages
-# =========================
+# =========================================================
 class ContactView(TemplateView):
     template_name = 'core/contact.html'
 
@@ -200,9 +197,9 @@ class FAQView(TemplateView):
     template_name = 'core/faq.html'
 
 
-# =========================
-# Dashboard
-# =========================
+# =========================================================
+# Admin Dashboard
+# =========================================================
 class DashboardView(AdminRequiredMixin, TemplateView):
     template_name = 'core/dashboard.html'
 
@@ -223,13 +220,16 @@ class DashboardView(AdminRequiredMixin, TemplateView):
         return context
 
 
-# =========================
-# AI Chat
-# =========================
+# =========================================================
+# AI Chat Page
+# =========================================================
 class ChatView(LoginRequiredMixin, TemplateView):
     template_name = 'core/chat.html'
 
 
+# =========================================================
+# AI Chat API (Robust Version)
+# =========================================================
 @login_required
 def get_ai_response(request):
 
@@ -244,7 +244,7 @@ def get_ai_response(request):
     api_key = os.environ.get('DEEPSEEK_API_KEY')
 
     # =========================
-    # 1️⃣ Try API
+    # 1️⃣ External AI API
     # =========================
     if api_key:
         try:
@@ -274,14 +274,14 @@ def get_ai_response(request):
             logger.warning(f"AI API failed: {e}")
 
     # =========================
-    # 2️⃣ Fallback (DB filtering)
+    # 2️⃣ Fallback Recommendation System
     # =========================
     queryset = Book.objects.select_related('category').annotate(
         avg_rating=Avg('ratings__rating'),
         rating_count=Count('ratings'),
     )
 
-    # ⭐ multi-condition filtering
+    # ⭐ Keyword-based filtering
     if 'fantasy' in lowered:
         queryset = queryset.filter(category__name__icontains='fantasy')
 
@@ -294,10 +294,7 @@ def get_ai_response(request):
     if 'mystery' in lowered or 'detective' in lowered:
         queryset = queryset.filter(category__name__icontains='mystery')
 
-    if 'short' in lowered or 'easy' in lowered:
-        queryset = queryset.filter(description__length__lt=300)
-
-    # ⭐ ranking
+    # ⭐ Ranking strategy
     if 'popular' in lowered:
         queryset = queryset.order_by('-rating_count')
     else:
@@ -305,6 +302,7 @@ def get_ai_response(request):
 
     results = list(queryset[:3])
 
+    # ⭐ Fallback if no match
     if not results:
         results = list(
             Book.objects.annotate(
@@ -321,5 +319,5 @@ def get_ai_response(request):
     )
 
     return JsonResponse({
-        'response': f"Here are recommendations:\n{bullets}"
+        'response': f"Here are some recommendations:\n{bullets}"
     })
