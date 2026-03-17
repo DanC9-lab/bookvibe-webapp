@@ -7,9 +7,7 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_POST
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.db.models import Avg, Count, Q
 from django.http import HttpResponseForbidden, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse_lazy
 from django.views import View
@@ -385,7 +383,7 @@ def get_ai_response(request):
     return JsonResponse({
         'response': f"Here are some recommendations:\n{bullets}"
     })
-    from django.views.decorators.http import require_POST
+    
 
 # =========================================================
 # AJAX: Submit Rating
