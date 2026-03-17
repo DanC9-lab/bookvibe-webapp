@@ -217,6 +217,7 @@ COMMENT_BANK = [
 @dataclass
 class CoverLookupResult:
     cover_url: str = ''
+    from typing import Optional
     first_publish_year: Optional[int] = None
 
 
