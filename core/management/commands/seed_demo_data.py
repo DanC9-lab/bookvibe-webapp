@@ -1,14 +1,79 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Optional
+import random
 
-import requests
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 
 from core.models import Book, Category, Comment, Rating
+class Command(BaseCommand):
 
+    def handle(self, *args, **kwargs):
+
+        # Prevent duplicate data insertion:
+        # If the database already contains books, skip seeding
+        if Book.objects.exists():
+            self.stdout.write("Seed skipped: data already exists.")
+            return
+
+        self.stdout.write("Seeding database...")
+
+        # ---------------------------
+        # Create categories
+        # ---------------------------
+        fiction = Category.objects.create(name="Fiction")
+        non_fiction = Category.objects.create(name="Non-fiction")
+        sci_fi = Category.objects.create(name="Sci-Fi")
+
+        # ---------------------------
+        # Create demo user
+        # ---------------------------
+        user, _ = User.objects.get_or_create(
+            username="demo_user",
+            defaults={"email": "demo@example.com"}
+        )
+
+        # ---------------------------
+        # Create books
+        # ---------------------------
+        books = [
+            ("1984", "George Orwell", fiction),
+            ("To Kill a Mockingbird", "Harper Lee", fiction),
+            ("The Great Gatsby", "F. Scott Fitzgerald", fiction),
+            ("Dune", "Frank Herbert", sci_fi),
+            ("Foundation", "Isaac Asimov", sci_fi),
+            ("Sapiens", "Yuval Noah Harari", non_fiction),
+            ("Educated", "Tara Westover", non_fiction),
+        ]
+
+        created_books = []
+
+        for title, author, category in books:
+            book = Book.objects.create(
+                title=title,
+                author=author,
+                description=f"A book titled '{title}' by {author}.",
+                category=category
+            )
+            created_books.append(book)
+
+        # ---------------------------
+        # Add ratings and comments
+        # ---------------------------
+        for book in created_books:
+            Rating.objects.create(
+                user=user,
+                book=book,
+                score=4
+            )
+
+            Comment.objects.create(
+                user=user,
+                book=book,
+                content=f"I enjoyed reading {book.title}."
+            )
+
+        self.stdout.write(self.style.SUCCESS("Database seeded successfully."))
 
 CATEGORY_LIBRARY = [
     {
