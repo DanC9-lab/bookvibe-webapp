@@ -226,7 +226,7 @@ class OpenLibraryCoverClient:
 
     def __init__(self):
         import requests
-       self.session = requests.Session()
+        self.session = requests.Session()
         self.cache: dict[tuple[str, str], CoverLookupResult] = {}
 
     def find_cover(self, title: str, author: str) -> CoverLookupResult:
