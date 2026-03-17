@@ -5,6 +5,7 @@ import requests
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.views.decorators.http import require_POST
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Avg, Count, Q
 from django.http import HttpResponseForbidden, JsonResponse
@@ -218,7 +219,70 @@ class DashboardView(AdminRequiredMixin, TemplateView):
             'categories': Category.objects.annotate(book_count=Count('books')).order_by('name'),
         })
         return context
+# =========================================================
+# Add Book View
+# =========================================================
+class AddBookView(AdminRequiredMixin, CreateView):
+    model = Book
+    form_class = BookForm
+    template_name = 'core/add_book.html'
+    success_url = reverse_lazy('core:dashboard')
 
+
+# =========================================================
+# Edit Book View
+# =========================================================
+class EditBookView(AdminRequiredMixin, UpdateView):
+    model = Book
+    form_class = BookForm
+    template_name = 'core/edit_book.html'
+    success_url = reverse_lazy('core:dashboard')
+
+
+# =========================================================
+# Delete Book
+# =========================================================
+@login_required
+def delete_book(request, pk):
+    if not is_admin(request.user):
+        return HttpResponseForbidden()
+
+    book = get_object_or_404(Book, pk=pk)
+    book.delete()
+    return redirect('core:dashboard')
+
+
+# =========================================================
+# Add Category View
+# =========================================================
+class AddCategoryView(AdminRequiredMixin, CreateView):
+    model = Category
+    form_class = CategoryForm
+    template_name = 'core/add_category.html'
+    success_url = reverse_lazy('core:dashboard')
+
+
+# =========================================================
+# Edit Category View
+# =========================================================
+class EditCategoryView(AdminRequiredMixin, UpdateView):
+    model = Category
+    form_class = CategoryForm
+    template_name = 'core/edit_category.html'
+    success_url = reverse_lazy('core:dashboard')
+
+
+# =========================================================
+# Delete Category
+# =========================================================
+@login_required
+def delete_category(request, pk):
+    if not is_admin(request.user):
+        return HttpResponseForbidden()
+
+    category = get_object_or_404(Category, pk=pk)
+    category.delete()
+    return redirect('core:dashboard')
 
 # =========================================================
 # AI Chat Page
@@ -320,4 +384,72 @@ def get_ai_response(request):
 
     return JsonResponse({
         'response': f"Here are some recommendations:\n{bullets}"
+    })
+    from django.views.decorators.http import require_POST
+
+# =========================================================
+# AJAX: Submit Rating
+# =========================================================
+from django.db.models import Avg
+from django.shortcuts import get_object_or_404
+
+@login_required
+@require_POST
+def submit_rating_ajax(request, pk):
+    book = get_object_or_404(Book, pk=pk)
+
+    value = request.POST.get("value") or request.POST.get("rating")
+
+    if not value:
+        return JsonResponse({"success": False}, status=400)
+
+    value = int(value)
+
+    rating, created = Rating.objects.update_or_create(
+        user=request.user,
+        book=book,
+        defaults={"rating": value}
+    )
+
+    avg = Rating.objects.filter(book=book).aggregate(
+        avg=Avg("rating")
+    )["avg"]
+
+    return JsonResponse({
+        "success": True,
+        "new_average_rating": avg,
+        "new_rating_count": Rating.objects.filter(book=book).count()
+    })
+
+
+# =========================================================
+# AJAX: Submit Comment
+# =========================================================
+from django.template.loader import render_to_string
+
+@login_required
+@require_POST
+def submit_comment_ajax(request, pk):
+    book = get_object_or_404(Book, pk=pk)
+    content = request.POST.get("content")
+
+    if not content or content.strip() == "":
+        return JsonResponse({"success": False}, status=400)
+
+    comment = Comment.objects.create(
+        user=request.user,
+        book=book,
+        content=content
+    )
+
+    html = render_to_string(
+        "core/partials/comment.html",
+        {"comment": comment},
+        request=request
+    )
+
+    return JsonResponse({
+        "success": True,
+        "comment_html": html,
+        "comment_count": Comment.objects.filter(book=book).count()
     })
