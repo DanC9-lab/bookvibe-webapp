@@ -1,4 +1,5 @@
 import os
+import logging
 import requests
 
 from django.contrib import messages
@@ -6,34 +7,33 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Avg, Count, Q
-from django.http import JsonResponse
+from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
+from django.urls import reverse_lazy
 from django.views import View
-from django.views.generic import ListView, TemplateView
+from django.views.generic import CreateView, ListView, TemplateView, UpdateView
 
 from .forms import BookForm, CategoryForm, CommentForm, RatingForm, RegistrationForm
-from .management.commands.seed_demo_data import CATEGORY_LIBRARY
 from .models import Book, Category, Comment, Rating
 
 
+logger = logging.getLogger(__name__)
+
+
 def is_admin(user):
-    """Returns True when the user has admin privileges."""
     return user.is_superuser or user.is_staff
 
 
-class AdminRequiredMixin(UserPassesTestMixin):
-    """Restricts access to admin users only."""
-
+class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     def test_func(self):
         return is_admin(self.request.user)
 
 
+# =========================
+# Book List
+# =========================
 class BookListView(ListView):
-    """
-    Displays the book catalogue with search, filtering and sorting options.
-    """
-
     model = Book
     template_name = 'core/book_list.html'
     context_object_name = 'books'
@@ -44,7 +44,10 @@ class BookListView(ListView):
             super()
             .get_queryset()
             .select_related('category')
-            .annotate(avg_rating=Avg('ratings__rating'), rating_count=Count('ratings'))
+            .annotate(
+                avg_rating=Avg('ratings__rating'),
+                rating_count=Count('ratings')
+            )
         )
 
         category_id = self.request.GET.get('category')
@@ -56,20 +59,18 @@ class BookListView(ListView):
 
         if query:
             queryset = queryset.filter(
-                Q(title__icontains=query) | Q(author__icontains=query)
+                Q(title__icontains=query) |
+                Q(author__icontains=query)
             )
 
         if sort == 'latest':
             queryset = queryset.order_by('-created_at', 'title')
-
         elif sort == 'title':
             queryset = queryset.order_by('title')
-
         elif sort == 'discussion':
             queryset = queryset.annotate(
                 comment_count=Count('comments')
             ).order_by('-comment_count', '-avg_rating', 'title')
-
         else:
             queryset = queryset.order_by('-avg_rating', '-rating_count', 'title')
 
@@ -78,7 +79,33 @@ class BookListView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        categories = Category.objects.annotate(book_count=Count('books')).order_by('name')
+        categories = Category.objects.annotate(
+            book_count=Count('books')
+        ).order_by('name')
+
+        filtered = any(
+            self.request.GET.get(param)
+            for param in ('category', 'q', 'sort')
+        )
+
+        spotlight_book = (
+            Book.objects.select_related('category')
+            .annotate(
+                avg_rating=Avg('ratings__rating'),
+                rating_count=Count('ratings')
+            )
+            .order_by('-avg_rating', '-rating_count', 'title')
+            .first()
+        )
+
+        editor_picks = (
+            Book.objects.select_related('category')
+            .annotate(
+                avg_rating=Avg('ratings__rating'),
+                rating_count=Count('ratings')
+            )
+            .order_by('-rating_count', '-avg_rating', 'title')[:3]
+        )
 
         context.update({
             'categories': categories,
@@ -86,29 +113,29 @@ class BookListView(ListView):
             'total_categories': Category.objects.count(),
             'community_ratings': Rating.objects.count(),
             'community_comments': Comment.objects.count(),
+            'spotlight_book': None if filtered else spotlight_book,
+            'editor_picks': [] if filtered else editor_picks,
+            'is_filtered': filtered,
         })
 
         return context
 
 
+# =========================
+# Book Detail
+# =========================
 class BookDetailView(View):
-    """
-    Displays an individual book page with ratings, comments,
-    and simple category-based recommendations.
-    """
-
     def get(self, request, pk):
-
         book = get_object_or_404(
             Book.objects.select_related('category')
             .prefetch_related('comments__user', 'ratings__user'),
-            pk=pk
+            pk=pk,
         )
 
         comments = book.comments.all()
         ratings = list(book.ratings.all())
 
-        avg_rating = round(sum(r.rating for r in ratings) / len(ratings), 1) if ratings else 0
+        avg_rating = round(sum(r.rating for r in ratings) / len(ratings), 1) if ratings else 0.0
         rating_count = len(ratings)
 
         user_rating = None
@@ -116,13 +143,16 @@ class BookDetailView(View):
             user_rating = book.ratings.filter(user=request.user).first()
 
         recommendations = (
-            Book.objects
-            .select_related('category')
+            Book.objects.select_related('category')
             .annotate(avg_rating=Avg('ratings__rating'), rating_count=Count('ratings'))
             .filter(category=book.category)
             .exclude(pk=book.pk)
             .order_by('-avg_rating', '-rating_count')[:4]
         )
+
+        description_word_count = len((book.description or '').split())
+        estimated_read_minutes = max(1, round(description_word_count / 200))
+        score_degrees = round((avg_rating / 5) * 360) if avg_rating else 0
 
         context = {
             'book': book,
@@ -133,35 +163,35 @@ class BookDetailView(View):
             'comment_form': CommentForm(),
             'recommendations': recommendations,
             'user_rating': user_rating,
+            'estimated_read_minutes': estimated_read_minutes,
+            'score_degrees': score_degrees,
         }
 
         return render(request, 'core/book_detail.html', context)
 
 
+# =========================
+# Auth
+# =========================
 class RegistrationView(View):
-    """Handles user registration."""
-
     def get(self, request):
         return render(request, 'registration/register.html', {'form': RegistrationForm()})
 
     def post(self, request):
-
         form = RegistrationForm(request.POST)
 
         if form.is_valid():
             user = form.save()
             login(request, user)
-
-            messages.success(
-                request,
-                f"Welcome, {user.username}! Your account has been created."
-            )
-
+            messages.success(request, f"Welcome, {user.username}!")
             return redirect('core:book_list')
 
         return render(request, 'registration/register.html', {'form': form})
 
 
+# =========================
+# Static Pages
+# =========================
 class ContactView(TemplateView):
     template_name = 'core/contact.html'
 
@@ -170,86 +200,38 @@ class FAQView(TemplateView):
     template_name = 'core/faq.html'
 
 
-@login_required
-def submit_rating_ajax(request, pk):
-    """Handles rating submission via AJAX."""
+# =========================
+# Dashboard
+# =========================
+class DashboardView(AdminRequiredMixin, TemplateView):
+    template_name = 'core/dashboard.html'
 
-    if request.method != 'POST':
-        return JsonResponse({'success': False}, status=400)
-
-    book = get_object_or_404(Book, pk=pk)
-
-    form = RatingForm(request.POST)
-
-    if not form.is_valid():
-        return JsonResponse({'success': False}, status=400)
-
-    rating_obj, _ = Rating.objects.update_or_create(
-        book=book,
-        user=request.user,
-        defaults={'rating': form.cleaned_data['rating']}
-    )
-
-    updated_book = Book.objects.annotate(avg_rating=Avg('ratings__rating')).get(pk=pk)
-
-    return JsonResponse({
-        'success': True,
-        'new_average_rating': round(updated_book.avg_rating or 0, 1),
-        'new_rating_count': updated_book.ratings.count(),
-        'user_rating': rating_obj.rating
-    })
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'dashboard_stats': {
+                'books': Book.objects.count(),
+                'categories': Category.objects.count(),
+                'ratings': Rating.objects.count(),
+                'comments': Comment.objects.count(),
+            },
+            'books': Book.objects.select_related('category').annotate(
+                avg_rating=Avg('ratings__rating')
+            ).order_by('title'),
+            'categories': Category.objects.annotate(book_count=Count('books')).order_by('name'),
+        })
+        return context
 
 
-@login_required
-def submit_comment_ajax(request, pk):
-    """Handles comment submission via AJAX."""
-
-    if request.method != 'POST':
-        return JsonResponse({'success': False}, status=400)
-
-    book = get_object_or_404(Book, pk=pk)
-
-    form = CommentForm(request.POST)
-
-    if not form.is_valid():
-        return JsonResponse({'success': False}, status=400)
-
-    comment = form.save(commit=False)
-    comment.book = book
-    comment.user = request.user
-    comment.save()
-
-    comment_html = render_to_string('core/partials/comment.html', {'comment': comment})
-
-    return JsonResponse({
-        'success': True,
-        'comment_html': comment_html,
-        'comment_count': book.comments.count()
-    })
-
-
+# =========================
+# AI Chat
+# =========================
 class ChatView(LoginRequiredMixin, TemplateView):
-    """
-    Displays the AI chat page.
-
-    The navigation link is visible to all users so the feature can be discovered,
-    but authentication is required before accessing the chat interface.
-    """
-
     template_name = 'core/chat.html'
 
 
 @login_required
 def get_ai_response(request):
-    """
-    Returns an AI response.
-
-    This function first attempts to call the DeepSeek API.
-    If unavailable, it falls back to a rule-based recommendation system that:
-    - parses user input
-    - applies multi-condition filtering
-    - ranks books using ratings and popularity
-    """
 
     if request.method != 'POST':
         return JsonResponse({'error': 'Invalid request method.'}, status=405)
@@ -259,12 +241,11 @@ def get_ai_response(request):
         return JsonResponse({'error': 'Message cannot be empty.'}, status=400)
 
     lowered = user_message.lower()
-
-    # -------------------------------
-    # Try external AI (unchanged)
-    # -------------------------------
     api_key = os.environ.get('DEEPSEEK_API_KEY')
 
+    # =========================
+    # 1️⃣ Try API
+    # =========================
     if api_key:
         try:
             response = requests.post(
@@ -276,97 +257,69 @@ def get_ai_response(request):
                 json={
                     'model': 'deepseek-chat',
                     'messages': [
-                        {
-                            'role': 'system',
-                            'content': 'You are a helpful book recommendation assistant for a reading website.',
-                        },
-                        {'role': 'user', 'content': user_message},
+                        {"role": "system", "content": "You recommend books."},
+                        {"role": "user", "content": user_message},
                     ],
                 },
-                timeout=20,
+                timeout=15,
             )
             response.raise_for_status()
             data = response.json()
-            return JsonResponse({'response': data['choices'][0]['message']['content']})
-        except Exception:
-            pass
 
-    # -------------------------------
-    # Advanced local AI (NEW PART)
-    # -------------------------------
+            return JsonResponse({
+                'response': data['choices'][0]['message']['content']
+            })
 
-    books = list(
-        Book.objects
-        .select_related('category')
-        .annotate(
-            avg_rating=Avg('ratings__rating'),
-            rating_count=Count('ratings')
-        )
+        except Exception as e:
+            logger.warning(f"AI API failed: {e}")
+
+    # =========================
+    # 2️⃣ Fallback (DB filtering)
+    # =========================
+    queryset = Book.objects.select_related('category').annotate(
+        avg_rating=Avg('ratings__rating'),
+        rating_count=Count('ratings'),
     )
 
-    if not books:
-        return JsonResponse({
-            'response': 'I do not have any books in the catalogue yet.'
-        })
-
-    results = books
-
-    # -------- Genre filtering --------
+    # ⭐ multi-condition filtering
     if 'fantasy' in lowered:
-        results = [b for b in results if b.category and 'fantasy' in b.category.name.lower()]
+        queryset = queryset.filter(category__name__icontains='fantasy')
 
-    elif 'classic' in lowered:
-        results = [b for b in results if b.category and 'classic' in b.category.name.lower()]
+    if 'romance' in lowered:
+        queryset = queryset.filter(category__name__icontains='romance')
 
-    elif 'science' in lowered or 'sci-fi' in lowered:
-        results = [b for b in results if b.category and 'sci' in b.category.name.lower()]
+    if 'science' in lowered or 'sci-fi' in lowered:
+        queryset = queryset.filter(category__name__icontains='sci')
 
-    elif 'romance' in lowered:
-        results = [b for b in results if b.category and 'romance' in b.category.name.lower()]
+    if 'mystery' in lowered or 'detective' in lowered:
+        queryset = queryset.filter(category__name__icontains='mystery')
 
-    elif 'mystery' in lowered or 'detective' in lowered:
-        results = [b for b in results if b.category and 'mystery' in b.category.name.lower()]
-
-    # -------- Length / difficulty --------
     if 'short' in lowered or 'easy' in lowered:
-        results = [b for b in results if len(b.description or '') < 250]
+        queryset = queryset.filter(description__length__lt=300)
 
-    # -------- Ranking --------
+    # ⭐ ranking
     if 'popular' in lowered:
-        results = sorted(results, key=lambda b: b.rating_count, reverse=True)
-
-    elif 'high rating' in lowered or 'best' in lowered or 'top' in lowered:
-        results = sorted(results, key=lambda b: ((b.avg_rating or 0), b.rating_count), reverse=True)
-
+        queryset = queryset.order_by('-rating_count')
     else:
-        results = sorted(
-            results,
-            key=lambda b: ((b.avg_rating or 0), b.rating_count),
-            reverse=True
-        )
+        queryset = queryset.order_by('-avg_rating', '-rating_count')
 
-    # -------- Fallback --------
+    results = list(queryset[:3])
+
     if not results:
-        results = sorted(
-            books,
-            key=lambda b: ((b.avg_rating or 0), b.rating_count),
-            reverse=True
+        results = list(
+            Book.objects.annotate(
+                avg_rating=Avg('ratings__rating'),
+                rating_count=Count('ratings')
+            ).order_by('-avg_rating', '-rating_count')[:3]
         )
 
-results = results[:3]
+    bullets = '\n'.join(
+        f'• {b.title} by {b.author} — '
+        f'{b.category.name if b.category else "General"}, '
+        f'{(b.avg_rating or 0):.1f}/5 ({b.rating_count})'
+        for b in results
+    )
 
-# -------- Format response --------
-bullets = '\n'.join(
-    f'• {book.title} by {book.author} — '
-    f'{(book.category.name if book.category else "General")}, '
-    f'rated {(book.avg_rating or 0):.1f}/5 from {(book.rating_count or 0)} review(s)'
-    for book in results
-)
-
-response_text = (
-    'Here are some books you might enjoy from BookVibe:\n'
-    f'{bullets}\n\n'
-    'Tell me a genre, mood, or reading style and I can refine the suggestions.'
-)
-
-return JsonResponse({'response': response_text})
+    return JsonResponse({
+        'response': f"Here are recommendations:\n{bullets}"
+    })
