@@ -242,26 +242,31 @@ class ChatView(LoginRequiredMixin, TemplateView):
 @login_required
 def get_ai_response(request):
     """
-    Generates AI responses.
+    Returns an AI response.
 
-    If an external API key is configured, the system attempts to use the
-    DeepSeek API. Otherwise a lightweight local recommendation engine
-    suggests books based on keywords and ratings.
+    This function first attempts to call the DeepSeek API.
+    If unavailable, it falls back to a rule-based recommendation system that:
+    - parses user input
+    - applies multi-condition filtering
+    - ranks books using ratings and popularity
     """
 
     if request.method != 'POST':
-        return JsonResponse({'error': 'Invalid request'}, status=405)
+        return JsonResponse({'error': 'Invalid request method.'}, status=405)
 
-    user_message = (request.POST.get('message') or '').strip().lower()
-
+    user_message = (request.POST.get('message') or '').strip()
     if not user_message:
-        return JsonResponse({'error': 'Message cannot be empty'}, status=400)
+        return JsonResponse({'error': 'Message cannot be empty.'}, status=400)
 
+    lowered = user_message.lower()
+
+    # -------------------------------
+    # Try external AI (unchanged)
+    # -------------------------------
     api_key = os.environ.get('DEEPSEEK_API_KEY')
 
     if api_key:
         try:
-
             response = requests.post(
                 'https://api.deepseek.com/chat/completions',
                 headers={
@@ -271,70 +276,97 @@ def get_ai_response(request):
                 json={
                     'model': 'deepseek-chat',
                     'messages': [
-                        {"role": "system", "content": "You are a helpful book recommendation assistant."},
-                        {"role": "user", "content": user_message}
+                        {
+                            'role': 'system',
+                            'content': 'You are a helpful book recommendation assistant for a reading website.',
+                        },
+                        {'role': 'user', 'content': user_message},
                     ],
                 },
-                timeout=20
+                timeout=20,
             )
-
+            response.raise_for_status()
             data = response.json()
-
-            return JsonResponse({
-                'response': data['choices'][0]['message']['content']
-            })
-
+            return JsonResponse({'response': data['choices'][0]['message']['content']})
         except Exception:
             pass
+
+    # -------------------------------
+    # Advanced local AI (NEW PART)
+    # -------------------------------
 
     books = list(
         Book.objects
         .select_related('category')
-        .annotate(avg_rating=Avg('ratings__rating'), rating_count=Count('ratings'))
+        .annotate(
+            avg_rating=Avg('ratings__rating'),
+            rating_count=Count('ratings')
+        )
     )
 
     if not books:
         return JsonResponse({
-            'response': 'No books available in the catalogue yet.'
+            'response': 'I do not have any books in the catalogue yet.'
         })
 
-    if 'fantasy' in user_message:
-        matches = [b for b in books if b.category and 'fantasy' in b.category.name.lower()]
+    results = books
 
-    elif 'classic' in user_message:
-        matches = [b for b in books if b.category and 'classic' in b.category.name.lower()]
+    # -------- Genre filtering --------
+    if 'fantasy' in lowered:
+        results = [b for b in results if b.category and 'fantasy' in b.category.name.lower()]
 
-    elif 'science' in user_message or 'sci' in user_message:
-        matches = [b for b in books if b.category and 'sci' in b.category.name.lower()]
+    elif 'classic' in lowered:
+        results = [b for b in results if b.category and 'classic' in b.category.name.lower()]
 
-    elif 'best' in user_message or 'top' in user_message:
-        matches = sorted(books, key=lambda b: ((b.avg_rating or 0), b.rating_count), reverse=True)
+    elif 'science' in lowered or 'sci-fi' in lowered:
+        results = [b for b in results if b.category and 'sci' in b.category.name.lower()]
+
+    elif 'romance' in lowered:
+        results = [b for b in results if b.category and 'romance' in b.category.name.lower()]
+
+    elif 'mystery' in lowered or 'detective' in lowered:
+        results = [b for b in results if b.category and 'mystery' in b.category.name.lower()]
+
+    # -------- Length / difficulty --------
+    if 'short' in lowered or 'easy' in lowered:
+        results = [b for b in results if len(b.description or '') < 250]
+
+    # -------- Ranking --------
+    if 'popular' in lowered:
+        results = sorted(results, key=lambda b: b.rating_count, reverse=True)
+
+    elif 'high rating' in lowered or 'best' in lowered or 'top' in lowered:
+        results = sorted(results, key=lambda b: ((b.avg_rating or 0), b.rating_count), reverse=True)
 
     else:
-        matches = books[:3]
+        results = sorted(
+            results,
+            key=lambda b: ((b.avg_rating or 0), b.rating_count),
+            reverse=True
+        )
 
-    bullets = "\n".join(
-        f"• {b.title} by {b.author} ({b.category.name if b.category else 'General'})"
-        for b in matches[:3]
-    )
+    # -------- Fallback --------
+    if not results:
+        results = sorted(
+            books,
+            key=lambda b: ((b.avg_rating or 0), b.rating_count),
+            reverse=True
+        )
 
-    return JsonResponse({
-        'response': f"Here are some books you might enjoy:\n{bullets}"
-    })
+results = results[:3]
 
+# -------- Format response --------
+bullets = '\n'.join(
+    f'• {book.title} by {book.author} — '
+    f'{(book.category.name if book.category else "General")}, '
+    f'rated {(book.avg_rating or 0):.1f}/5 from {(book.rating_count or 0)} review(s)'
+    for book in results
+)
 
-class DashboardView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
-    """Admin dashboard."""
+response_text = (
+    'Here are some books you might enjoy from BookVibe:\n'
+    f'{bullets}\n\n'
+    'Tell me a genre, mood, or reading style and I can refine the suggestions.'
+)
 
-    template_name = 'core/dashboard.html'
-
-    def get_context_data(self, **kwargs):
-
-        context = super().get_context_data(**kwargs)
-
-        context.update({
-            'books': Book.objects.all(),
-            'categories': Category.objects.all(),
-        })
-
-        return context
+return JsonResponse({'response': response_text})
