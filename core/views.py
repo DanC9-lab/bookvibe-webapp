@@ -4,14 +4,16 @@ import requests
 
 from django.contrib import messages
 from django.contrib.auth import login
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.http import HttpResponseForbidden, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, ListView, TemplateView, UpdateView
+from django.db.models import Avg, Count, Q
 
 from .forms import BookForm, CategoryForm, CommentForm, RatingForm, RegistrationForm
 from .models import Book, Category, Comment, Rating
@@ -32,7 +34,7 @@ class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
 
 
 # =========================================================
-# Book List View (Search, Filter, Sort)
+# Book List View
 # =========================================================
 class BookListView(ListView):
     model = Book
@@ -133,10 +135,7 @@ class BookDetailView(View):
             pk=pk,
         )
 
-        comments = book.comments.all()
         ratings = list(book.ratings.all())
-
-        # ⭐ Safe average calculation
         avg_rating = round(sum(r.rating for r in ratings) / len(ratings), 1) if ratings else 0.0
         rating_count = len(ratings)
 
@@ -156,7 +155,7 @@ class BookDetailView(View):
             'book': book,
             'avg_rating': avg_rating,
             'rating_count': rating_count,
-            'comments': comments,
+            'comments': book.comments.all(),
             'rating_form': RatingForm(initial={'rating': user_rating.rating if user_rating else None}),
             'comment_form': CommentForm(),
             'recommendations': recommendations,
@@ -217,8 +216,10 @@ class DashboardView(AdminRequiredMixin, TemplateView):
             'categories': Category.objects.annotate(book_count=Count('books')).order_by('name'),
         })
         return context
+
+
 # =========================================================
-# Add Book View
+# CRUD
 # =========================================================
 class AddBookView(AdminRequiredMixin, CreateView):
     model = Book
@@ -227,9 +228,6 @@ class AddBookView(AdminRequiredMixin, CreateView):
     success_url = reverse_lazy('core:dashboard')
 
 
-# =========================================================
-# Edit Book View
-# =========================================================
 class EditBookView(AdminRequiredMixin, UpdateView):
     model = Book
     form_class = BookForm
@@ -237,22 +235,15 @@ class EditBookView(AdminRequiredMixin, UpdateView):
     success_url = reverse_lazy('core:dashboard')
 
 
-# =========================================================
-# Delete Book
-# =========================================================
 @login_required
 def delete_book(request, pk):
     if not is_admin(request.user):
         return HttpResponseForbidden()
 
-    book = get_object_or_404(Book, pk=pk)
-    book.delete()
+    get_object_or_404(Book, pk=pk).delete()
     return redirect('core:dashboard')
 
 
-# =========================================================
-# Add Category View
-# =========================================================
 class AddCategoryView(AdminRequiredMixin, CreateView):
     model = Category
     form_class = CategoryForm
@@ -260,9 +251,6 @@ class AddCategoryView(AdminRequiredMixin, CreateView):
     success_url = reverse_lazy('core:dashboard')
 
 
-# =========================================================
-# Edit Category View
-# =========================================================
 class EditCategoryView(AdminRequiredMixin, UpdateView):
     model = Category
     form_class = CategoryForm
@@ -270,31 +258,24 @@ class EditCategoryView(AdminRequiredMixin, UpdateView):
     success_url = reverse_lazy('core:dashboard')
 
 
-# =========================================================
-# Delete Category
-# =========================================================
 @login_required
 def delete_category(request, pk):
     if not is_admin(request.user):
         return HttpResponseForbidden()
 
-    category = get_object_or_404(Category, pk=pk)
-    category.delete()
+    get_object_or_404(Category, pk=pk).delete()
     return redirect('core:dashboard')
 
+
 # =========================================================
-# AI Chat Page
+# AI Chat
 # =========================================================
 class ChatView(LoginRequiredMixin, TemplateView):
     template_name = 'core/chat.html'
 
 
-# =========================================================
-# AI Chat API (Robust Version)
-# =========================================================
 @login_required
 def get_ai_response(request):
-
     if request.method != 'POST':
         return JsonResponse({'error': 'Invalid request method.'}, status=405)
 
@@ -302,12 +283,8 @@ def get_ai_response(request):
     if not user_message:
         return JsonResponse({'error': 'Message cannot be empty.'}, status=400)
 
-    lowered = user_message.lower()
     api_key = os.environ.get('DEEPSEEK_API_KEY')
 
-    # =========================
-    # 1️⃣ External AI API
-    # =========================
     if api_key:
         try:
             response = requests.post(
@@ -326,104 +303,57 @@ def get_ai_response(request):
                 timeout=15,
             )
             response.raise_for_status()
-            data = response.json()
-
             return JsonResponse({
-                'response': data['choices'][0]['message']['content']
+                'response': response.json()['choices'][0]['message']['content']
             })
 
         except Exception as e:
             logger.warning(f"AI API failed: {e}")
 
-    # =========================
-    # 2️⃣ Fallback Recommendation System
-    # =========================
-    queryset = Book.objects.select_related('category').annotate(
+    queryset = Book.objects.annotate(
         avg_rating=Avg('ratings__rating'),
-        rating_count=Count('ratings'),
-    )
-
-    # ⭐ Keyword-based filtering
-    if 'fantasy' in lowered:
-        queryset = queryset.filter(category__name__icontains='fantasy')
-
-    if 'romance' in lowered:
-        queryset = queryset.filter(category__name__icontains='romance')
-
-    if 'science' in lowered or 'sci-fi' in lowered:
-        queryset = queryset.filter(category__name__icontains='sci')
-
-    if 'mystery' in lowered or 'detective' in lowered:
-        queryset = queryset.filter(category__name__icontains='mystery')
-
-    # ⭐ Ranking strategy
-    if 'popular' in lowered:
-        queryset = queryset.order_by('-rating_count')
-    else:
-        queryset = queryset.order_by('-avg_rating', '-rating_count')
-
-    results = list(queryset[:3])
-
-    # ⭐ Fallback if no match
-    if not results:
-        results = list(
-            Book.objects.annotate(
-                avg_rating=Avg('ratings__rating'),
-                rating_count=Count('ratings')
-            ).order_by('-avg_rating', '-rating_count')[:3]
-        )
+        rating_count=Count('ratings')
+    ).order_by('-avg_rating', '-rating_count')[:3]
 
     bullets = '\n'.join(
-        f'• {b.title} by {b.author} — '
-        f'{b.category.name if b.category else "General"}, '
-        f'{(b.avg_rating or 0):.1f}/5 ({b.rating_count})'
-        for b in results
+        f'• {b.title} ({(b.avg_rating or 0):.1f}/5)'
+        for b in queryset
     )
 
     return JsonResponse({
-        'response': f"Here are some recommendations:\n{bullets}"
+        'response': f"Recommended:\n{bullets}"
     })
-    
+
 
 # =========================================================
-# AJAX: Submit Rating
+# AJAX
 # =========================================================
-from django.db.models import Avg
-from django.shortcuts import get_object_or_404
-
 @login_required
 @require_POST
 def submit_rating_ajax(request, pk):
     book = get_object_or_404(Book, pk=pk)
 
-    value = request.POST.get("value") or request.POST.get("rating")
-
-    if not value:
+    try:
+        value = int(request.POST.get("value") or request.POST.get("rating"))
+        if value < 1 or value > 5:
+            raise ValueError
+    except:
         return JsonResponse({"success": False}, status=400)
 
-    value = int(value)
-
-    rating, created = Rating.objects.update_or_create(
+    Rating.objects.update_or_create(
         user=request.user,
         book=book,
         defaults={"rating": value}
     )
 
-    avg = Rating.objects.filter(book=book).aggregate(
-        avg=Avg("rating")
-    )["avg"]
+    avg = Rating.objects.filter(book=book).aggregate(avg=Avg("rating"))["avg"]
 
     return JsonResponse({
         "success": True,
-        "new_average_rating": avg,
+        "new_average_rating": round(avg or 0, 1),
         "new_rating_count": Rating.objects.filter(book=book).count()
     })
 
-
-# =========================================================
-# AJAX: Submit Comment
-# =========================================================
-from django.template.loader import render_to_string
 
 @login_required
 @require_POST
@@ -431,7 +361,7 @@ def submit_comment_ajax(request, pk):
     book = get_object_or_404(Book, pk=pk)
     content = request.POST.get("content")
 
-    if not content or content.strip() == "":
+    if not content or not content.strip():
         return JsonResponse({"success": False}, status=400)
 
     comment = Comment.objects.create(
