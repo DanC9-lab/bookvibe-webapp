@@ -1,137 +1,163 @@
-# BookVibe - Book Rating & Recommendation Platform
+# 📚 BookVibe – Campus Book Recommendation Platform
 
-**BookVibe** is a user-friendly book discovery, rating, and discussion platform built with Python and Django. Users can browse books by category, rate books from 1–5 stars, post comments, and chat with an AI assistant for personalised book recommendations.
+## 📖 Overview
 
-This project was developed as part of the Internet Technology (M) course at the University of Glasgow.
+BookVibe is a Django-based web application designed to help users browse, rate, and discuss books.
+It includes dynamic AJAX features and an AI-powered recommendation system.
 
-## Key Features
+---
 
-*   **User Authentication** – Secure registration, login, and logout (M1, M2).
-*   **Book Catalogue** – Browse a paginated list of books with cover images, ratings, and categories (M3).
-*   **Star Ratings** – Rate books 1–5 stars; average ratings update in real time via AJAX (M4, M5).
-*   **Comments** – Post comments on book pages, submitted asynchronously (C2).
-*   **Search & Filter** – Search by title/author and filter by category (S1, S2).
-*   **AI Chat** – Get personalised book recommendations from DeepSeek AI (C1).
-*   **Custom Admin Dashboard** – Add, edit, and delete books and categories through a dedicated dashboard (M6).
-*   **Responsive Design** – Built with Bootstrap 5, fully responsive across mobile, tablet, and desktop.
-*   **Accessibility** – Skip-to-content link, visible focus indicators, ARIA live regions, and accessible form error handling.
-*   **Sustainability** – Lazy-loaded images, external CSS/JS, no unused dependencies.
+## 🚀 Features
 
-## Tech Stack
+* 📚 Browse and search books
+* ⭐ Rating system (AJAX, no page reload)
+* 💬 Comment system (AJAX, real-time updates)
+* 🤖 AI-powered book recommendations
+* 🔐 User authentication (login/register)
+* 🛠 Admin dashboard for content management
 
-*   **Backend:** Python 3.9+, Django 4.2+
-*   **Frontend:** HTML5, CSS3, JavaScript (vanilla), Bootstrap 5
-*   **Database:** PostgreSQL (production) / SQLite3 (development)
-*   **Deployment:** Gunicorn, Whitenoise, Render.com
-*   **Testing:** Django TestCase
+---
 
-## Project Structure
+## 🛠 Tech Stack
 
-```
-bookvibe/
-├── manage.py
-├── requirements.txt
-├── build.sh                    # Render deployment script
-├── project_config/             # Django project settings
-│   ├── settings.py
-│   ├── urls.py
-│   └── wsgi.py
-├── core/                       # Main application
-│   ├── models.py               # Book, Category, Rating, Comment
-│   ├── views.py                # All views (public + admin dashboard)
-│   ├── urls.py                 # URL routing
-│   ├── forms.py                # Django forms
-│   ├── admin.py                # Django admin registration
-│   └── tests.py                # Unit tests
-├── templates/
-│   ├── base.html               # Base layout (template inheritance)
-│   ├── core/                   # App templates
-│   │   ├── book_list.html
-│   │   ├── book_detail.html
-│   │   ├── chat.html
-│   │   ├── contact.html
-│   │   ├── faq.html
-│   │   ├── dashboard.html
-│   │   ├── add_book.html / edit_book.html
-│   │   ├── add_category.html / edit_category.html
-│   │   └── partials/comment.html
-│   └── registration/
-│       ├── login.html
-│       └── register.html
-└── static/
-    ├── css/style.css           # All custom styles
-    └── js/main.js              # All custom JavaScript
-```
+* Backend: Django (Python)
+* Frontend: HTML, CSS, Bootstrap, JavaScript
+* Database: SQLite (local) / PostgreSQL (Render)
+* API: External AI service (via HTTP requests)
 
-## Local Development Setup
+---
 
-### Prerequisites
+## ⚙️ Setup Instructions
 
-*   Python 3.9+
-*   `pip` (Python package installer)
-
-### 1. Create and Activate a Virtual Environment
-
-```bash
-# macOS / Linux
-python3 -m venv venv
-source venv/bin/activate
-
-# Windows
-python -m venv venv
-.\venv\Scripts\activate
-```
-
-### 2. Install Dependencies
+### 1. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Apply Migrations
+### 2. Apply migrations
 
 ```bash
 python manage.py migrate
 ```
 
-### 4. (Optional) Seed Demo Data
+### 3. Seed demo data (IMPORTANT)
 
 ```bash
 python manage.py seed_demo_data
 ```
 
-This loads sample categories, books, ratings, comments, a demo reader, and a demo admin for fast demos.
+👉 This will populate the database with sample books (50+ records).
 
-### 5. Create a Superuser
-
-```bash
-python manage.py createsuperuser
-```
-
-### 6. Run the Development Server
+### 4. Run the development server
 
 ```bash
 python manage.py runserver
 ```
 
-The application will be available at **http://127.0.0.1:8000/**.
+👉 Open: http://127.0.0.1:8000/
 
-*   Book List: `http://127.0.0.1:8000/`
-*   Admin Dashboard: `http://127.0.0.1:8000/dashboard/` (requires staff/superuser)
-*   Django Admin: `http://127.0.0.1:8000/admin/`
+---
 
-### 7. (Optional) Set Up AI Chat
+## 🔄 AJAX Functionality
 
-To enable live AI chat responses, set the `DEEPSEEK_API_KEY` environment variable. If it is not set, BookVibe falls back to local catalogue recommendations so the chat demo still works:
+The application uses AJAX to enhance user experience:
+
+* Rating submissions update instantly without page reload
+* Comments appear immediately after posting
+* Backend returns JSON responses:
+
+  * `new_average_rating`
+  * `new_rating_count`
+  * `comment_html`
+  * `comment_count`
+
+---
+
+## 🗄 Database Design
+
+Main models:
+
+* **Book**
+* **Category**
+* **Rating** (One rating per user per book)
+* **Comment**
+
+Relationships:
+
+* Book → Category (ForeignKey)
+* Rating → Book + User
+* Comment → Book + User
+
+---
+
+## 🌐 Deployment
+
+The application is deployed on **Render**.
+
+### Build Command
 
 ```bash
-export DEEPSEEK_API_KEY="your-api-key-here"
+python manage.py migrate && python manage.py seed_demo_data
 ```
 
-## Running Tests
+### Notes
+
+* Uses PostgreSQL in production
+* Static files served via WhiteNoise
+
+---
+
+## 🧪 Testing
+
+Run tests using:
 
 ```bash
-python manage.py test core
+python manage.py test
 ```
 
-The test suite covers: model business logic (average rating calculation), AJAX rating endpoint, AJAX comment endpoint, book list search/filter, registration flow, and view template rendering.
+All tests pass, including:
+
+* AJAX rating submission
+* AJAX comment submission
+* Database updates and counts
+
+---
+
+## ⚠️ Notes
+
+* Each user can rate a book only once (update_or_create logic)
+* Empty comments are rejected
+* AJAX endpoints return JSON (not HTML pages)
+
+---
+
+## 📁 Project Structure
+
+```
+core/               # Main app (models, views, logic)
+project_config/     # Django settings
+templates/          # HTML templates
+static/             # CSS, JS
+manage.py
+requirements.txt
+build.sh
+```
+
+---
+
+## 👨‍💻 Author
+
+Yuhang Chen
+University of Glasgow
+
+---
+
+## ✅ Submission Notes
+
+* Virtual environment (`venv/`) removed
+* `.git/` removed
+* Database not included (use seed script instead)
+* Project fully reproducible using instructions above
+
+---
