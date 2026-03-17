@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import requests
+
 from dataclasses import dataclass
 
 import random
@@ -223,7 +225,8 @@ class OpenLibraryCoverClient:
     cover_endpoint = 'https://covers.openlibrary.org/b/id/{cover_id}-L.jpg'
 
     def __init__(self):
-        self.session = requests.Session()
+        import requests
+       self.session = requests.Session()
         self.cache: dict[tuple[str, str], CoverLookupResult] = {}
 
     def find_cover(self, title: str, author: str) -> CoverLookupResult:
