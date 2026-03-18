@@ -208,12 +208,10 @@ textarea:focus-visible {
 }
 
 .book-card {
-  position: relative; 
   overflow: hidden;
   height: 100%;
   transition: transform .2s ease, box-shadow .2s ease;
 }
-
 .book-card:hover { transform: translateY(-6px); box-shadow: 0 20px 44px rgba(69, 55, 40, 0.12); }
 .book-cover-frame { background: linear-gradient(180deg, #f3ede5, #f9f6f1); padding: 1rem; }
 .book-cover-frame img,
@@ -375,8 +373,6 @@ textarea:focus {
 
 .chat-shell {
   overflow: hidden;
-  max-width: 900px;
-  margin-inline: auto;
 }
 
 .chat-banner {
@@ -400,10 +396,6 @@ textarea:focus {
 
 .ai-message {
   justify-content: flex-start;
-}
-
-.user-message {
-  justify-content: flex-end;
 }
 
 .message-bubble {
@@ -439,49 +431,4 @@ textarea:focus {
   background: rgba(255,255,255,.9);
   border-radius: 1rem;
   overflow: hidden;
-}
-/* ===============================
-   A+ UI Upgrade: Hover Overlay
-   =============================== */
-
-/* Make link behave like normal content */
-.book-card-link {
-  color: inherit;
-}
-
-/* Dark overlay (hidden by default) */
-.book-hover-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-  border-radius: 1.5rem;
-  z-index: 3;
-  pointer-events: none;
-}
-
-/* Show overlay on hover */
-.book-card:hover .book-hover-overlay {
-  opacity: 1;
-}
-
-/* Text inside overlay */
-.view-text {
-  color: #ffffff;
-  font-size: 1.1rem;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
-/* Optional: subtle zoom effect on image */
-.book-card img {
-  transition: transform 0.3s ease;
-}
-
-.book-card:hover img {
-  transform: scale(1.03);
 }

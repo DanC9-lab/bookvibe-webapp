@@ -3,25 +3,22 @@ Django settings for BookVibe project.
 """
 
 import os
-import sys
-
 import dj_database_url
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'bookvibe-local-dev-secret-key-2026-keep-outside-production-env')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-default-key-for-dev')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# Defaults to False for safer deployment; set DEBUG=True explicitly for local development.
-DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
-TESTING = 'test' in sys.argv
+# Defaults to True for local development; set DEBUG=False on deployment platform.
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
-if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 # Application definition
@@ -116,11 +113,11 @@ LOGIN_URL = 'login'
 # Only active when deployed to Render (or similar), not on local machines.
 # This avoids HTTPS redirects breaking local testing when DEBUG=False.
 # --------------------------------------------------------------------------
-if not DEBUG and not TESTING:
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+if RENDER_EXTERNAL_HOSTNAME:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+    SECURE_BROWSER_XSS_FILTER = True

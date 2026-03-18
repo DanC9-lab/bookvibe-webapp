@@ -92,22 +92,11 @@ pip install -r requirements.txt
 python manage.py migrate
 ```
 
-### 3. Load demo data (REQUIRED)
+### 3. Load demo data
 
-⚠️ **Important:**
-The application will have **no books or categories** unless demo data is loaded.
-
-You MUST run:
-
-```bash
+```bash id="a3"
 python manage.py seed_demo_data
 ```
-
-If you skip this step:
-
-* The homepage will show 0 books
-* Features like ratings, comments, and AI recommendations will not work properly
-
 
 ### 4. Run server
 

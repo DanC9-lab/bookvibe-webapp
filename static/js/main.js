@@ -10,20 +10,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const commentForm = document.getElementById('comment-form');
     const chatForm = document.getElementById('chat-form');
 
-    document.querySelectorAll('form[data-confirm]').forEach((form) => {
-        form.addEventListener('submit', function (event) {
-            const message = form.dataset.confirm || 'Are you sure?';
-            if (!window.confirm(message)) {
-                event.preventDefault();
-            }
-        });
-    });
-
-    document.querySelectorAll('.js-score-ring').forEach((ring) => {
-        const scoreDeg = Number(ring.dataset.scoreDeg || 0);
-        ring.style.setProperty('--score-deg', `${scoreDeg}deg`);
-    });
-
     if (ratingForm) {
         ratingForm.addEventListener('submit', function (event) {
             event.preventDefault();
@@ -48,19 +34,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     const msgEl = document.getElementById('rating-success-message');
                     const userRatingEl = document.getElementById('user-rating-display');
 
-                    if (avgEl) {
-                        avgEl.textContent = Number(data.new_average_rating).toFixed(1);
-                    }
-                    if (countEl) {
-                        countEl.textContent = data.new_rating_count;
-                    }
-                    if (userRatingEl && data.user_rating) {
+                    avgEl.textContent = Number(data.new_average_rating).toFixed(1);
+                    countEl.textContent = data.new_rating_count;
+                    if (userRatingEl) {
                         userRatingEl.innerHTML = `Your rating: <strong>${data.user_rating}/5</strong>`;
                     }
-                    if (msgEl) {
-                        msgEl.classList.remove('d-none');
-                        setTimeout(() => msgEl.classList.add('d-none'), 2500);
-                    }
+
+                    msgEl.classList.remove('d-none');
+                    setTimeout(() => msgEl.classList.add('d-none'), 2500);
                 })
                 .catch((error) => console.error('Rating network error:', error));
         });
@@ -86,21 +67,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     const errorEl = document.getElementById('comment-error-message');
 
                     if (data.success) {
-                        if (commentList) {
-                            commentList.insertAdjacentHTML('afterbegin', data.comment_html);
-                        }
+                        commentList.insertAdjacentHTML('afterbegin', data.comment_html);
                         commentForm.reset();
-                        if (countEl) {
-                            countEl.textContent = data.comment_count;
-                        }
-                        if (noMsg) {
-                            noMsg.classList.add('d-none');
-                        }
-                        if (errorEl) {
-                            errorEl.classList.add('d-none');
-                            errorEl.textContent = '';
-                        }
-                    } else if (errorEl) {
+                        countEl.textContent = data.comment_count;
+                        noMsg.classList.add('d-none');
+                        errorEl.classList.add('d-none');
+                        errorEl.textContent = '';
+                    } else {
                         const errorText = data.errors && data.errors.content ? data.errors.content[0] : 'An error occurred.';
                         errorEl.textContent = errorText;
                         errorEl.classList.remove('d-none');
@@ -114,10 +87,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const chatLog = document.getElementById('chat-log');
         const chatInput = document.getElementById('chat-message-input');
         const promptButtons = document.querySelectorAll('.js-chat-prompt');
-
-        if (!chatLog || !chatInput || !chatForm.dataset.url) {
-            return;
-        }
 
         promptButtons.forEach((button) => {
             button.addEventListener('click', function () {
