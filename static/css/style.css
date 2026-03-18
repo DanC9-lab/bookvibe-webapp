@@ -208,10 +208,12 @@ textarea:focus-visible {
 }
 
 .book-card {
+  position: relative; 
   overflow: hidden;
   height: 100%;
   transition: transform .2s ease, box-shadow .2s ease;
 }
+
 .book-card:hover { transform: translateY(-6px); box-shadow: 0 20px 44px rgba(69, 55, 40, 0.12); }
 .book-cover-frame { background: linear-gradient(180deg, #f3ede5, #f9f6f1); padding: 1rem; }
 .book-cover-frame img,
@@ -447,11 +449,6 @@ textarea:focus {
   color: inherit;
 }
 
-/* Ensure card positioning for overlay */
-.book-card {
-  position: relative;
-}
-
 /* Dark overlay (hidden by default) */
 .book-hover-overlay {
   position: absolute;
@@ -464,6 +461,7 @@ textarea:focus {
   transition: opacity 0.25s ease;
   border-radius: 1.5rem;
   z-index: 3;
+  pointer-events: none;
 }
 
 /* Show overlay on hover */
@@ -480,7 +478,10 @@ textarea:focus {
 }
 
 /* Optional: subtle zoom effect on image */
+.book-card img {
+  transition: transform 0.3s ease;
+}
+
 .book-card:hover img {
   transform: scale(1.03);
-  transition: transform 0.3s ease;
 }
