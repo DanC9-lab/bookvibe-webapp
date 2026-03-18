@@ -74,6 +74,11 @@ class BookDetailViewTests(TestCase):
         response = self.client.get(reverse('core:book_detail', kwargs={'pk': self.book.pk}))
         self.assertTemplateUsed(response, 'core/book_detail.html')
 
+    def test_detail_view_supplies_estimated_read_minutes(self):
+        response = self.client.get(reverse('core:book_detail', kwargs={'pk': self.book.pk}))
+        self.assertIn('estimated_read_minutes', response.context)
+        self.assertGreaterEqual(response.context['estimated_read_minutes'], 1)
+
 
 class AjaxRatingViewTests(TestCase):
     def setUp(self):
@@ -92,8 +97,15 @@ class AjaxRatingViewTests(TestCase):
         data = response.json()
         self.assertEqual(response.status_code, 200)
         self.assertTrue(data['success'])
+        self.assertEqual(data['user_rating'], 4)
         self.assertAlmostEqual(data['new_average_rating'], 4.0)
         self.assertEqual(data['new_rating_count'], 1)
+
+    def test_invalid_rating_rejected(self):
+        self.client.login(username='ajaxuser', password='testpass123')
+        response = self.client.post(self.url, {'rating': '8'})
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()['success'])
 
     def test_rating_update_on_resubmission(self):
         self.client.login(username='ajaxuser', password='testpass123')
@@ -216,3 +228,72 @@ class AiFallbackTests(TestCase):
         response = self.client.post(self.url, {'message': 'Recommend a fantasy book'})
         self.assertEqual(response.status_code, 200)
         self.assertIn('The Name of the Wind', response.json()['response'])
+
+
+class AuthenticationFlowTests(TestCase):
+    def test_login_page_preserves_next_parameter(self):
+        response = self.client.get(reverse('login'), {'next': reverse('core:chat')})
+        self.assertContains(response, 'name="next"')
+        self.assertContains(response, reverse('core:chat'))
+
+
+class DashboardCrudTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(username='staffuser', password='pass1234', is_staff=True)
+        self.category = Category.objects.create(name='Original Category')
+        self.book = Book.objects.create(
+            title='Original Title',
+            author='Original Author',
+            description='Original description',
+            category=self.category,
+        )
+        self.client.login(username='staffuser', password='pass1234')
+
+    def test_staff_can_add_book(self):
+        response = self.client.post(reverse('core:add_book'), {
+            'title': 'New Book',
+            'author': 'New Author',
+            'description': 'Fresh description',
+            'category': self.category.pk,
+            'cover_url': 'https://example.com/cover.jpg',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Book.objects.filter(title='New Book').exists())
+
+    def test_staff_can_edit_book(self):
+        response = self.client.post(reverse('core:edit_book', kwargs={'pk': self.book.pk}), {
+            'title': 'Updated Title',
+            'author': self.book.author,
+            'description': self.book.description,
+            'category': self.category.pk,
+            'cover_url': '',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.book.refresh_from_db()
+        self.assertEqual(self.book.title, 'Updated Title')
+
+    def test_staff_can_add_and_edit_category(self):
+        add_response = self.client.post(reverse('core:add_category'), {'name': 'Added Category'})
+        self.assertEqual(add_response.status_code, 302)
+        added = Category.objects.get(name='Added Category')
+
+        edit_response = self.client.post(reverse('core:edit_category', kwargs={'pk': added.pk}), {'name': 'Renamed Category'})
+        self.assertEqual(edit_response.status_code, 302)
+        added.refresh_from_db()
+        self.assertEqual(added.name, 'Renamed Category')
+
+    def test_delete_category_blocked_when_books_exist(self):
+        response = self.client.post(reverse('core:delete_category', kwargs={'pk': self.category.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Category.objects.filter(pk=self.category.pk).exists())
+
+    def test_staff_can_delete_book(self):
+        response = self.client.post(reverse('core:delete_book', kwargs={'pk': self.book.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Book.objects.filter(pk=self.book.pk).exists())
+
+    def test_delete_book_rejects_get_requests(self):
+        self.book = Book.objects.create(title='Second Book', author='Author', description='Desc', category=self.category)
+        response = self.client.get(reverse('core:delete_book', kwargs={'pk': self.book.pk}))
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Book.objects.filter(pk=self.book.pk).exists())

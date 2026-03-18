@@ -1,83 +1,15 @@
 from __future__ import annotations
 
-import requests
-
+import os
 from dataclasses import dataclass
+from typing import Optional
 
-import random
-
+import requests
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 
 from core.models import Book, Category, Comment, Rating
-class Command(BaseCommand):
 
-    def handle(self, *args, **kwargs):
-
-        # Prevent duplicate data insertion:
-        # If the database already contains books, skip seeding
-        if Book.objects.exists():
-            self.stdout.write("Seed skipped: data already exists.")
-            return
-
-        self.stdout.write("Seeding database...")
-
-        # ---------------------------
-        # Create categories
-        # ---------------------------
-        fiction = Category.objects.create(name="Fiction")
-        non_fiction = Category.objects.create(name="Non-fiction")
-        sci_fi = Category.objects.create(name="Sci-Fi")
-
-        # ---------------------------
-        # Create demo user
-        # ---------------------------
-        user, _ = User.objects.get_or_create(
-            username="demo_user",
-            defaults={"email": "demo@example.com"}
-        )
-
-        # ---------------------------
-        # Create books
-        # ---------------------------
-        books = [
-            ("1984", "George Orwell", fiction),
-            ("To Kill a Mockingbird", "Harper Lee", fiction),
-            ("The Great Gatsby", "F. Scott Fitzgerald", fiction),
-            ("Dune", "Frank Herbert", sci_fi),
-            ("Foundation", "Isaac Asimov", sci_fi),
-            ("Sapiens", "Yuval Noah Harari", non_fiction),
-            ("Educated", "Tara Westover", non_fiction),
-        ]
-
-        created_books = []
-
-        for title, author, category in books:
-            book = Book.objects.create(
-                title=title,
-                author=author,
-                description=f"A book titled '{title}' by {author}.",
-                category=category
-            )
-            created_books.append(book)
-
-        # ---------------------------
-        # Add ratings and comments
-        # ---------------------------
-        for book in created_books:
-            Rating.objects.create(
-                user=user,
-                book=book,
-                score=4
-            )
-
-            Comment.objects.create(
-                user=user,
-                book=book,
-                content=f"I enjoyed reading {book.title}."
-            )
-
-        self.stdout.write(self.style.SUCCESS("Database seeded successfully."))
 
 CATEGORY_LIBRARY = [
     {
@@ -217,7 +149,6 @@ COMMENT_BANK = [
 @dataclass
 class CoverLookupResult:
     cover_url: str = ''
-    from typing import Optional
     first_publish_year: Optional[int] = None
 
 
@@ -226,7 +157,6 @@ class OpenLibraryCoverClient:
     cover_endpoint = 'https://covers.openlibrary.org/b/id/{cover_id}-L.jpg'
 
     def __init__(self):
-        import requests
         self.session = requests.Session()
         self.cache: dict[tuple[str, str], CoverLookupResult] = {}
 
@@ -280,10 +210,11 @@ class OpenLibraryCoverClient:
 
 
 class Command(BaseCommand):
-    help = 'Seed BookVibe with reader-facing categories, books, ratings, comments, and online cover images.'
+    help = 'Seed BookVibe with reader-facing categories, books, ratings, comments, and optional online cover images.'
 
     def handle(self, *args, **options):
-        cover_client = OpenLibraryCoverClient()
+        fetch_remote_covers = os.environ.get('FETCH_BOOK_COVERS', 'False').lower() == 'true'
+        cover_client = OpenLibraryCoverClient() if fetch_remote_covers else None
         created_books = []
 
         for category_payload in CATEGORY_LIBRARY:
@@ -299,7 +230,7 @@ class Command(BaseCommand):
                     },
                 )
                 cover_result = CoverLookupResult(cover_url=book.cover_url)
-                if not book.cover and not book.cover_url:
+                if cover_client and not book.cover and not book.cover_url:
                     cover_result = cover_client.find_cover(title, author)
                 updated_fields = []
                 if book.author != author:
@@ -352,8 +283,9 @@ class Command(BaseCommand):
                 content=COMMENT_BANK[index % len(COMMENT_BANK)],
             )
 
+        cover_note = 'with online cover lookup enabled' if fetch_remote_covers else 'without remote cover lookup'
         self.stdout.write(
             self.style.SUCCESS(
-                f'Successfully seeded {len(CATEGORY_LIBRARY)} categories and {len(created_books)} books for BookVibe.'
+                f'Successfully seeded {len(CATEGORY_LIBRARY)} categories and {len(created_books)} books for BookVibe {cover_note}.'
             )
         )

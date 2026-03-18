@@ -1,13 +1,11 @@
 <nav class="navbar navbar-expand-lg navbar-bookvibe sticky-top py-3" aria-label="Main navigation">
     <div class="container">
 
-        <!-- Brand -->
         <a class="navbar-brand brand-pill" href="{% url 'core:book_list' %}">
             <span class="brand-icon">📚</span>
             <span>BookVibe</span>
         </a>
 
-        <!-- Mobile Toggle -->
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
             data-bs-target="#navbarNav" aria-controls="navbarNav"
             aria-expanded="false" aria-label="Toggle navigation">
@@ -16,7 +14,6 @@
 
         <div class="collapse navbar-collapse" id="navbarNav">
 
-            <!-- Navigation Links -->
             <ul class="navbar-nav ms-lg-4 me-auto align-items-lg-center gap-lg-2">
 
                 <li class="nav-item">
@@ -27,12 +24,16 @@
                     </a>
                 </li>
 
-                <!-- AI Chat (visible to all users, protected in view) -->
+                <!--
+                AI Chat is visible to all users so that the feature can be discovered easily.
+                Access control is handled in the Django view using @login_required,
+                which redirects unauthenticated users to the login page.
+                -->
                 <li class="nav-item">
                     <a class="nav-link {% if request.resolver_match and request.resolver_match.url_name == 'chat' %}active{% endif %}"
                        {% if request.resolver_match and request.resolver_match.url_name == 'chat' %}aria-current="page"{% endif %}
                        href="{% url 'core:chat' %}">
-                        🤖 AI chat
+                        AI chat
                     </a>
                 </li>
 
@@ -52,29 +53,28 @@
                     </a>
                 </li>
 
-                {% if user.is_authenticated and user.is_staff %}
-                <li class="nav-item">
-                    <a class="nav-link {% if request.resolver_match and request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
-                       {% if request.resolver_match and request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}
-                       href="{% url 'core:dashboard' %}">
-                        Dashboard
-                    </a>
-                </li>
+                {% if user.is_authenticated %}
+                    {% if user.is_staff or user.is_superuser %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match and request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+                           {% if request.resolver_match and request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}
+                           href="{% url 'core:dashboard' %}">
+                            Dashboard
+                        </a>
+                    </li>
+                    {% endif %}
                 {% endif %}
 
             </ul>
 
-            <!-- Right Side Auth Section -->
             <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-2 mt-3 mt-lg-0">
 
                 {% if user.is_authenticated %}
 
-                    <!-- User Badge -->
-                    <span class="badge bg-light text-dark px-3 py-2">
-                        👤 {{ user.username }}
+                    <span class="small-muted">
+                        Signed in as <strong>{{ user.username }}</strong>
                     </span>
 
-                    <!-- Logout -->
                     <form method="post" action="{% url 'logout' %}" class="d-inline-block m-0">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-soft px-3">
@@ -84,12 +84,10 @@
 
                 {% else %}
 
-                    <!-- Login -->
                     <a href="{% url 'login' %}" class="btn btn-soft px-3">
                         Login
                     </a>
 
-                    <!-- Register -->
                     <a href="{% url 'register' %}" class="btn btn-gradient px-3">
                         Create account
                     </a>
@@ -101,17 +99,3 @@
         </div>
     </div>
 </nav>
-
-<!-- ===== A+ UI Enhancement ===== -->
-<style>
-.nav-link.active {
-    color: #2563eb !important;
-    font-weight: 600;
-    border-bottom: 2px solid #2563eb;
-}
-
-.navbar-bookvibe {
-    backdrop-filter: blur(10px);
-    background: rgba(255, 255, 255, 0.85);
-}
-</style>

@@ -373,6 +373,8 @@ textarea:focus {
 
 .chat-shell {
   overflow: hidden;
+  max-width: 900px;
+  margin-inline: auto;
 }
 
 .chat-banner {
@@ -396,6 +398,10 @@ textarea:focus {
 
 .ai-message {
   justify-content: flex-start;
+}
+
+.user-message {
+  justify-content: flex-end;
 }
 
 .message-bubble {
