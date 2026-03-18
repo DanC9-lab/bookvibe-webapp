@@ -240,33 +240,32 @@
 <div class="row g-4 mb-4">
     {% for book in books %}
         <div class="col-sm-6 col-xl-4">
-            <article class="book-card book-card-upgraded position-relative d-flex flex-column h-100">
-                <div class="book-cover-frame position-relative">
+            <article class="book-card position-relative">
+                <div class="book-cover-frame">
                     {% if book.display_cover_url %}
                         <img src="{{ book.display_cover_url }}" alt="Cover of {{ book.title }}" loading="lazy">
                     {% else %}
                         <div class="book-cover-placeholder rounded-4 d-flex align-items-center justify-content-center">Cover unavailable</div>
                     {% endif %}
-                    <div class="book-card-overlay">
-                        <span class="badge-soft">{{ book.category.name|default:"General" }}</span>
-                    </div>
                 </div>
-                <div class="p-4 d-flex flex-column flex-grow-1 book-card-body">
-                    <div class="book-copy-block">
-                        <h3 class="h4 mb-1 book-card-title">{{ book.title }}</h3>
-                        <p class="small-muted mb-3 book-card-author">by {{ book.author }}</p>
-                        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-                            <span class="stars">★★★★★</span>
-                            <span class="small-muted">{{ book.avg_rating|default:0|floatformat:1 }} / 5 · {{ book.rating_count }} rating{{ book.rating_count|pluralize }}</span>
-                        </div>
-                        <p class="small-muted mb-0 book-card-description">{{ book.description|truncatechars:135 }}</p>
-                    </div>
-
-                    <div class="book-card-actions mt-auto pt-4 d-flex flex-wrap gap-2 align-items-center">
-                        <a href="{% url 'core:book_detail' book.pk %}" class="btn btn-gradient btn-detail-primary">View details</a>
-                        
-                    </div>
+                <div class="book-card-overlay">
+                    <span class="badge-soft">{{ book.category.name|default:"General" }}</span>
                 </div>
+                <div class="p-4 d-flex flex-column h-100">
+    <h3 class="h4 mb-1">
+        <a href="{% url 'core:book_detail' book.pk %}" class="text-reset text-decoration-none">
+            {{ book.title }}
+        </a>
+    </h3>
+    <p class="small-muted mb-3">by {{ book.author }}</p>
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <span class="stars">★★★★★</span>
+        <span class="small-muted">{{ book.avg_rating|default:0|floatformat:1 }} / 5 · {{ book.rating_count }} rating{{ book.rating_count|pluralize }}</span>
+    </div>
+    <p class="small-muted mb-4">{{ book.description|truncatechars:135 }}</p>
+    <a href="{% url 'core:book_detail' book.pk %}" class="btn btn-soft mt-3 align-self-start book-card-action">View details</a>
+</div>
+                <a href="{% url 'core:book_detail' book.pk %}" class="book-card-link" aria-label="View details for {{ book.title }}"></a>
             </article>
         </div>
     {% empty %}

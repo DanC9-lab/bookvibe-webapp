@@ -213,6 +213,10 @@ textarea:focus-visible {
   transition: transform .2s ease, box-shadow .2s ease;
 }
 .book-card:hover { transform: translateY(-6px); box-shadow: 0 20px 44px rgba(69, 55, 40, 0.12); }
+.book-card { cursor: pointer; }
+.book-card-link { position: absolute; inset: 0; z-index: 1; }
+.book-card-action,
+.book-card h3 a { position: relative; z-index: 2; }
 .book-cover-frame { background: linear-gradient(180deg, #f3ede5, #f9f6f1); padding: 1rem; }
 .book-cover-frame img,
 .book-cover-placeholder {
@@ -373,6 +377,8 @@ textarea:focus {
 
 .chat-shell {
   overflow: hidden;
+  max-width: 900px;
+  margin-inline: auto;
 }
 
 .chat-banner {
@@ -396,6 +402,10 @@ textarea:focus {
 
 .ai-message {
   justify-content: flex-start;
+}
+
+.user-message {
+  justify-content: flex-end;
 }
 
 .message-bubble {
@@ -431,61 +441,4 @@ textarea:focus {
   background: rgba(255,255,255,.9);
   border-radius: 1rem;
   overflow: hidden;
-}
-
-
-.book-card-upgraded {
-  min-height: 100%;
-}
-
-.book-card-upgraded .book-cover-frame {
-  padding-bottom: 1.15rem;
-}
-
-.book-card-body {
-  position: relative;
-}
-
-.book-copy-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.book-card-title {
-  line-height: 1.2;
-}
-
-.book-card-author {
-  min-height: 1.6rem;
-}
-
-.book-card-description {
-  line-height: 1.65;
-}
-
-.book-card-actions {
-  border-top: 1px solid rgba(28, 26, 23, 0.06);
-}
-
-.btn-detail-primary,
-.btn-detail-secondary {
-  min-width: 132px;
-  text-align: center;
-}
-
-.btn-detail-secondary {
-  background: rgba(242, 236, 248, 0.7);
-}
-
-.book-card-upgraded .book-card-overlay {
-  top: 1.1rem;
-  left: 1.1rem;
-  z-index: 2;
-}
-
-@media (max-width: 575.98px) {
-  .book-card-actions .btn {
-    width: 100%;
-  }
 }

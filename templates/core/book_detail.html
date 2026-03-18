@@ -22,7 +22,7 @@
                 <div class="stat-card h-100">
                     <div class="stat-kicker">Average rating</div>
                     <div class="d-flex align-items-center gap-3">
-                        <div class="score-ring" style="--score-deg:{% widthratio avg_rating 5 360 %}deg;">
+                        <div class="score-ring js-score-ring" data-score-deg="{{ score_degrees }}">
                             <div class="text-center">
                                 <div class="fw-bold fs-4" id="average-rating-value">{{ avg_rating|floatformat:1 }}</div>
                                 <div class="small-muted">/ 5</div>
@@ -52,7 +52,7 @@
         <p class="lead mb-3">by {{ book.author }}</p>
         <div class="d-flex align-items-center gap-2 mb-4">
             <span class="stars">★★★★★</span>
-            <span class="small-muted">Community average {{ avg_rating|floatformat:1 }} / 5</span>
+            <span class="small-muted" id="average-rating-copy">Community average {{ avg_rating|floatformat:1 }} / 5</span>
         </div>
 
         <div class="panel-card mb-4">
