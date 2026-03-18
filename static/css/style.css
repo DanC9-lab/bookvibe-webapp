@@ -438,3 +438,49 @@ textarea:focus {
   border-radius: 1rem;
   overflow: hidden;
 }
+/* ===============================
+   A+ UI Upgrade: Hover Overlay
+   =============================== */
+
+/* Make link behave like normal content */
+.book-card-link {
+  color: inherit;
+}
+
+/* Ensure card positioning for overlay */
+.book-card {
+  position: relative;
+}
+
+/* Dark overlay (hidden by default) */
+.book-hover-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  border-radius: 1.5rem;
+  z-index: 3;
+}
+
+/* Show overlay on hover */
+.book-card:hover .book-hover-overlay {
+  opacity: 1;
+}
+
+/* Text inside overlay */
+.view-text {
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Optional: subtle zoom effect on image */
+.book-card:hover img {
+  transform: scale(1.03);
+  transition: transform 0.3s ease;
+}
