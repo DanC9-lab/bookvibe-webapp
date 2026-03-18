@@ -1,45 +1,159 @@
-
 {% extends "base.html" %}
-{% load static %}
+
+{% block title %}{{ book.title }} - BookVibe{% endblock %}
+
 {% block content %}
-<script src="{% static 'js/book.js' %}"></script>
-
-<div class="container py-5">
-
-<h1>{{ book.title }}</h1>
-<p>{{ book.author }}</p>
-
-<h4>⭐ Avg: <span id="avgRating">{{ avg_rating|floatformat:1 }}</span></h4>
-
-<div>
-    {% for i in "12345" %}
-    <span style="cursor:pointer;font-size:24px" onclick="submitRating({{book.id}}, {{forloop.counter}})">★</span>
-    {% endfor %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <a href="{% url 'core:book_list' %}" class="btn btn-soft">← Back to catalogue</a>
+    <span class="badge-soft">{{ book.category.name|default:"General" }}</span>
 </div>
 
-<hr>
-
-<textarea id="commentInput" class="form-control"></textarea>
-<button onclick="submitComment({{book.id}})" class="btn btn-success mt-2">Comment</button>
-
-<div id="commentList" class="mt-3">
-{% for c in comments %}
-<div class="border p-2 mb-2">{{ c.text }}</div>
-{% endfor %}
-</div>
-
-<hr>
-
-<h5>Similar Books</h5>
-<div class="row">
-{% for b in similar_books %}
-<div class="col-md-3">
-    <div class="card p-2">
-        <a href="{% url 'book_detail' b.id %}">{{ b.title }}</a>
+<section class="row g-4 g-xl-5 mb-4 mb-lg-5">
+    <div class="col-lg-4">
+        {% if book.display_cover_url %}
+            <img src="{{ book.display_cover_url }}" alt="Cover of {{ book.title }}" class="detail-cover">
+        {% else %}
+            <div class="detail-cover d-flex align-items-center justify-content-center bg-light border">No cover available</div>
+        {% endif %}
     </div>
-</div>
-{% endfor %}
-</div>
+    <div class="col-lg-8">
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="stat-card h-100">
+                    <div class="stat-kicker">Average rating</div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="score-ring" style="--score-deg:{% widthratio avg_rating 5 360 %}deg;">
+                            <div class="text-center">
+                                <div class="fw-bold fs-4" id="average-rating-value">{{ avg_rating|floatformat:1 }}</div>
+                                <div class="small-muted">/ 5</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card h-100">
+                    <div class="stat-kicker">Reader activity</div>
+                    <div class="stat-value"><span id="rating-count">{{ rating_count }}</span> rating{{ rating_count|pluralize }}</div>
+                    <p class="small-muted mb-0">{{ comments.count }} comment{{ comments.count|pluralize }} posted by the community.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card h-100">
+                    <div class="stat-kicker">Quick read</div>
+                    <div class="stat-value">{{ estimated_read_minutes }} min</div>
+                    <p class="small-muted mb-0">Estimated reading time for the description and key details.</p>
+                </div>
+            </div>
+        </div>
 
-</div>
+        <p class="text-uppercase small-muted mb-2">Now reading</p>
+        <h1 class="display-6 fw-bold mb-2">{{ book.title }}</h1>
+        <p class="lead mb-3">by {{ book.author }}</p>
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <span class="stars">★★★★★</span>
+            <span class="small-muted">Community average {{ avg_rating|floatformat:1 }} / 5</span>
+        </div>
+
+        <div class="panel-card mb-4">
+            <p class="small-muted mb-2 text-uppercase">Overview</p>
+            <div class="mb-0">{{ book.description|linebreaks }}</div>
+        </div>
+
+        {% if user.is_authenticated %}
+            <div class="panel-card">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                    <div>
+                        <h2 class="h4 mb-1">Rate this book</h2>
+                        <p class="small-muted mb-0">Your score updates instantly and contributes to the live average.</p>
+                    </div>
+                    <div class="small-muted" id="user-rating-display">
+                        {% if user_rating %}
+                            Your rating: <strong>{{ user_rating.rating }}/5</strong>
+                        {% else %}
+                            You have not rated this book yet.
+                        {% endif %}
+                    </div>
+                </div>
+                <form id="rating-form" method="post" action="{% url 'core:submit_rating_ajax' book.pk %}">
+                    {% csrf_token %}
+                    <fieldset>
+                        <legend class="visually-hidden">Choose a rating from one to five stars</legend>
+                        <div class="rating-stars mb-3">
+                            {% for value in '54321' %}
+                                <input type="radio" id="rating-{{ value }}" name="rating" value="{{ value }}" class="rating-radio-input" {% if user_rating and user_rating.rating|stringformat:'s' == value %}checked{% endif %}>
+                                <label for="rating-{{ value }}" class="rating-star-label" aria-label="{{ value }} stars">★</label>
+                            {% endfor %}
+                        </div>
+                    </fieldset>
+                    <button type="submit" class="btn btn-gradient">Save rating</button>
+                </form>
+                <div id="rating-success-message" class="alert alert-success mt-3 d-none" role="status" aria-live="polite">Thanks! Your rating has been recorded.</div>
+            </div>
+        {% else %}
+            <div class="panel-card">
+                <p class="mb-0"><a href="{% url 'login' %}?next={{ request.path }}">Login</a> to rate this book or post a comment.</p>
+            </div>
+        {% endif %}
+    </div>
+</section>
+
+<section class="row g-4">
+    <div class="col-lg-8">
+        <div class="panel-card mb-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                    <p class="text-uppercase small-muted mb-1">Community discussion</p>
+                    <h2 class="h4 mb-0">Comments (<span id="comment-count">{{ comments.count }}</span>)</h2>
+                </div>
+            </div>
+            {% if user.is_authenticated %}
+                <form id="comment-form" method="post" action="{% url 'core:submit_comment_ajax' book.pk %}" class="mb-4">
+                    {% csrf_token %}
+                    <label for="{{ comment_form.content.id_for_label }}" class="form-label">Share your thoughts</label>
+                    {{ comment_form.content }}
+                    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+                        <p class="small-muted mb-0">Be specific: mention pacing, characters, atmosphere, or who you would recommend it to.</p>
+                        <button type="submit" class="btn btn-gradient">Post comment</button>
+                    </div>
+                </form>
+                <div id="comment-error-message" class="alert alert-danger d-none" role="alert"></div>
+            {% endif %}
+
+            <div id="comment-list" class="d-grid gap-3">
+                {% for comment in comments %}
+                    {% include 'core/partials/comment.html' %}
+                {% endfor %}
+            </div>
+            <p id="no-comments-message" class="small-muted mb-0 {% if comments %}d-none{% endif %}">No comments yet. Be the first to start the discussion.</p>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="panel-card h-100">
+            <p class="text-uppercase small-muted mb-2">You may also like</p>
+            <h2 class="h4 mb-3">More from this category</h2>
+            {% if recommendations %}
+                <div class="d-grid gap-3">
+                    {% for recommendation in recommendations %}
+                        <a href="{% url 'core:book_detail' recommendation.pk %}" class="recommendation-item text-reset">
+                            {% if recommendation.display_cover_url %}
+                                <img src="{{ recommendation.display_cover_url }}" class="recommendation-cover" alt="Cover of {{ recommendation.title }}">
+                            {% else %}
+                                <div class="recommendation-cover d-flex align-items-center justify-content-center bg-light border">No cover</div>
+                            {% endif %}
+                            <div>
+                                <h3 class="h6 mb-1">{{ recommendation.title }}</h3>
+                                <p class="small-muted mb-1">{{ recommendation.author }}</p>
+                                <p class="small-muted mb-0">{{ recommendation.avg_rating|default:0|floatformat:1 }} / 5 · {{ recommendation.rating_count }} rating{{ recommendation.rating_count|pluralize }}</p>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="small-muted mb-0">Add more books in the same category to show recommendations here.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
 {% endblock %}
