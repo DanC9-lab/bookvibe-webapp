@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}AI Assistant - BookVibe{% endblock %}
+
+{% block content %}
+<div class="chat-page">
+
+    <div class="chat-container">
+
+        <!-- Header -->
+        <div class="chat-header">
+            <h2>📚 Book AI Assistant</h2>
+            <p>Ask for recommendations by genre, mood, or popularity</p>
+        </div>
+
+        <!-- Messages -->
+        <div id="chat-box" class="chat-box">
+            <div class="message ai">
+                <div class="bubble">
+                    Hello 👋 Tell me what kind of book you're looking for.
+                </div>
+            </div>
+        </div>
+
+        <!-- Input -->
+        <form id="chat-form" class="chat-input">
+            {% csrf_token %}
+            <input 
+                type="text" 
+                id="chat-message" 
+                placeholder="Try: popular fantasy books..."
+                autocomplete="off"
+            >
+            <button type="submit">Send</button>
+        </form>
+
+    </div>
+
+</div>
+
+<style>
+.chat-page {
+    background: #0f172a;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.chat-container {
+    width: 100%;
+    max-width: 700px;
+    height: 80vh;
+    background: #111827;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-header {
+    padding: 20px;
+    border-bottom: 1px solid #1f2937;
+    text-align: center;
+}
+
+.chat-header h2 {
+    color: #f9fafb;
+    margin-bottom: 5px;
+}
+
+.chat-header p {
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+.chat-box {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.message {
+    margin-bottom: 12px;
+    display: flex;
+}
+
+.message.ai {
+    justify-content: flex-start;
+}
+
+.message.user {
+    justify-content: flex-end;
+}
+
+.bubble {
+    max-width: 70%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 14px;
+}
+
+.message.ai .bubble {
+    background: #1f2937;
+    color: #e5e7eb;
+}
+
+.message.user .bubble {
+    background: #2563eb;
+    color: white;
+}
+
+.chat-input {
+    display: flex;
+    border-top: 1px solid #1f2937;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    background: #111827;
+    color: white;
+}
+
+.chat-input button {
+    padding: 0 20px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.chat-input button:hover {
+    background: #1d4ed8;
+}
+</style>
+
+<script>
+const form = document.getElementById("chat-form");
+const input = document.getElementById("chat-message");
+const chatBox = document.getElementById("chat-box");
+
+function addMessage(text, type) {
+    const div = document.createElement("div");
+    div.className = "message " + type;
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.innerText = text;
+
+    div.appendChild(bubble);
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    addMessage(msg, "user");
+    input.value = "";
+
+    const typing = document.createElement("div");
+    typing.className = "message ai";
+    typing.innerHTML = '<div class="bubble">...</div>';
+    chatBox.appendChild(typing);
+
+    const formData = new FormData();
+    formData.append("message", msg);
+    formData.append("csrfmiddlewaretoken", document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+    try {
+        const res = await fetch("{% url 'core:get_ai_response' %}", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+        typing.remove();
+
+        addMessage(data.response || "Error", "ai");
+
+    } catch {
+        typing.remove();
+        addMessage("Server error. Try again.", "ai");
+    }
+});
+</script>
+
+{% endblock %}

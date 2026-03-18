@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}FAQ - BookVibe{% endblock %}
+
+{% block content %}
+<section class="panel-card mb-4">
+    <p class="text-uppercase small-muted mb-2">Help centre</p>
+    <h1 class="section-title h3 mb-2">Frequently asked questions</h1>
+    <p class="section-subtitle mb-0">Everything you need to browse, rate, review, and get more from BookVibe.</p>
+</section>
+
+<div class="accordion accordion-bookvibe" id="faqAccordion">
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="faq-heading-1">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1" aria-expanded="true" aria-controls="faq1">How do I create an account?</button>
+        </h2>
+        <div id="faq1" class="accordion-collapse collapse show" aria-labelledby="faq-heading-1" data-bs-parent="#faqAccordion">
+            <div class="accordion-body">Use the Register link in the navigation bar. Once the form is complete, you will be signed in automatically and returned to the catalogue.</div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="faq-heading-2">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2" aria-expanded="false" aria-controls="faq2">How do ratings and comments work?</button>
+        </h2>
+        <div id="faq2" class="accordion-collapse collapse" aria-labelledby="faq-heading-2" data-bs-parent="#faqAccordion">
+            <div class="accordion-body">Open any book page, leave a star rating, and add your thoughts in the comment box. Your feedback appears on the page right away.</div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="faq-heading-3">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3" aria-expanded="false" aria-controls="faq3">How does the recommendation chat work?</button>
+        </h2>
+        <div id="faq3" class="accordion-collapse collapse" aria-labelledby="faq-heading-3" data-bs-parent="#faqAccordion">
+            <div class="accordion-body">Ask for a genre, mood, pace, or a book similar to one you already enjoy. BookVibe will use the available catalogue data to suggest titles that fit your prompt.</div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="faq-heading-4">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4" aria-expanded="false" aria-controls="faq4">Can I browse by category?</button>
+        </h2>
+        <div id="faq4" class="accordion-collapse collapse" aria-labelledby="faq-heading-4" data-bs-parent="#faqAccordion">
+            <div class="accordion-body">Yes. Use the category filter on the catalogue page or open any shelf from the genre section on the homepage.</div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="faq-heading-5">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5" aria-expanded="false" aria-controls="faq5">How do I contact support?</button>
+        </h2>
+        <div id="faq5" class="accordion-collapse collapse" aria-labelledby="faq-heading-5" data-bs-parent="#faqAccordion">
+            <div class="accordion-body">Visit the <a href="{% url 'core:contact' %}">Contact page</a> for email, phone, and help options.</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

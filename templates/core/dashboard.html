@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - BookVibe{% endblock %}
+
+{% block content %}
+<section class="panel-card mb-4">
+    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center">
+        <div>
+            <p class="text-uppercase small-muted mb-2">Admin workspace</p>
+            <h1 class="section-title h3 mb-1">Dashboard</h1>
+            <p class="small-muted mb-0">Manage books, categories, and the catalogue experience from one place.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'core:add_book' %}" class="btn btn-gradient">+ Add book</a>
+            <a href="{% url 'core:add_category' %}" class="btn btn-soft">+ Add category</a>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3"><div class="metric-card"><div class="metric-value">{{ dashboard_stats.books }}</div><div class="metric-label">Books</div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="metric-card"><div class="metric-value">{{ dashboard_stats.categories }}</div><div class="metric-label">Categories</div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="metric-card"><div class="metric-value">{{ dashboard_stats.ratings }}</div><div class="metric-label">Ratings</div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="metric-card"><div class="metric-value">{{ dashboard_stats.comments }}</div><div class="metric-label">Comments</div></div></div>
+</section>
+
+<section class="row g-4">
+    <div class="col-xl-8">
+        <div class="panel-card h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <p class="text-uppercase small-muted mb-2">Catalogue</p>
+                    <h2 class="h4 mb-0">Books</h2>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle dashboard-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>Category</th>
+                            <th>Rating</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for book in books %}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">{{ book.title }}</div>
+                                <div class="small-muted">ID #{{ book.id }}</div>
+                            </td>
+                            <td>{{ book.author }}</td>
+                            <td>{{ book.category.name|default:"—" }}</td>
+                            <td>{{ book.avg_rating|default:0|floatformat:1 }} / 5</td>
+                            <td class="text-end">
+                                <a href="{% url 'core:edit_book' book.pk %}" class="btn btn-sm btn-soft">Edit</a>
+                                <form method="post" action="{% url 'core:delete_book' book.pk %}" class="d-inline" onsubmit="return confirm('Delete this book?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-4">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="5" class="text-center small-muted py-4">No books yet.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="panel-card h-100">
+            <p class="text-uppercase small-muted mb-2">Taxonomy</p>
+            <h2 class="h4 mb-3">Categories</h2>
+            <div class="d-grid gap-3">
+            {% for cat in categories %}
+                <div class="recommendation-item align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">{{ cat.name }}</div>
+                        <div class="small-muted">{{ cat.book_count }} book{{ cat.book_count|pluralize }}</div>
+                    </div>
+                    <a href="{% url 'core:edit_category' cat.pk %}" class="btn btn-sm btn-soft">Edit</a>
+                    <form method="post" action="{% url 'core:delete_category' cat.pk %}" class="d-inline" onsubmit="return confirm('Delete this category?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-4">Delete</button>
+                    </form>
+                </div>
+            {% empty %}
+                <p class="small-muted mb-0">No categories yet.</p>
+            {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

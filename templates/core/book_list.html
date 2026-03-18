@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Books - BookVibe{% endblock %}
+
+{% block content %}
+<section class="hero-card position-relative overflow-hidden p-4 p-lg-5 mb-4 mb-lg-5">
+    <span class="hero-orb hero-orb-1" aria-hidden="true"></span>
+    <span class="hero-orb hero-orb-2" aria-hidden="true"></span>
+    <div class="row align-items-center g-4 position-relative">
+        <div class="col-lg-7">
+            <div class="hero-chip-row d-flex flex-wrap gap-2 mb-3">
+                <span class="hero-chip">Reader reviews</span>
+                <span class="hero-chip">Curated genres</span>
+                <span class="hero-chip">Fresh discoveries</span>
+            </div>
+            <h1 class="display-5 fw-bold mb-3">Find your next great read in a calm, inviting space.</h1>
+            <p class="lead mb-4 hero-copy">Browse by genre, explore highly rated favourites, and move through the catalogue with a clean, book-centred experience built for everyday readers.</p>
+            <div class="d-flex flex-wrap gap-3">
+                <a href="#category-shelf" class="btn btn-gradient btn-lg rounded-4 px-4">Browse categories</a>
+                {% if user.is_authenticated %}
+                    <a href="{% url 'core:chat' %}" class="quick-link-chip">Ask BookVibe AI for suggestions</a>
+                {% else %}
+                    <a href="{% url 'register' %}" class="quick-link-chip">Join the reading community</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="row g-3">
+                <div class="col-6">
+                    <div class="metric-card">
+                        <div class="metric-value">{{ total_books }}</div>
+                        <div class="metric-label">Books available</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="metric-card">
+                        <div class="metric-value">{{ total_categories }}</div>
+                        <div class="metric-label">Categories</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="metric-card">
+                        <div class="metric-value">{{ community_ratings }}</div>
+                        <div class="metric-label">Reader ratings</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="metric-card">
+                        <div class="metric-value">{{ community_comments }}</div>
+                        <div class="metric-label">Community reviews</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% if not is_filtered %}
+<section class="row g-4 mb-4 mb-lg-5">
+    <div class="col-lg-8">
+        <div class="panel-card h-100">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+                <div>
+                    <p class="text-uppercase small-muted mb-2">Explore by mood and genre</p>
+                    <h2 class="section-title h3 mb-0">Find stories, ideas, and favourites across every shelf</h2>
+                </div>
+                {% if quick_category_links %}
+                <div class="d-flex flex-wrap gap-2 justify-content-lg-end align-content-start">
+                    {% for category in quick_category_links %}
+                        <a class="badge-soft" href="?category={{ category.id }}">{{ category.name }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="feature-tile panel-card h-100">
+                        <h3 class="h5">Browse with ease</h3>
+                        <p class="small-muted mb-0">Search by title or author, jump into popular genres, and move through the catalogue with a clear, uncluttered layout.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-tile panel-card h-100">
+                        <h3 class="h5">Thoughtfully arranged genres</h3>
+                        <p class="small-muted mb-0">Move naturally between literary fiction, classics, thrillers, fantasy, history, and more as your reading interests change.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-tile panel-card h-100">
+                        <h3 class="h5">Community-led discovery</h3>
+                        <p class="small-muted mb-0">Follow highly rated books, see what people are discussing, and use shared opinions to guide your next pick.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        {% if spotlight_book %}
+        <div class="spotlight-card h-100">
+            <p class="text-uppercase small-muted mb-2">Reader favourite</p>
+            <div class="d-flex gap-3 align-items-start">
+                {% if spotlight_book.display_cover_url %}
+                    <img src="{{ spotlight_book.display_cover_url }}" class="spotlight-cover" alt="Cover of {{ spotlight_book.title }}">
+                {% else %}
+                    <div class="spotlight-cover d-flex align-items-center justify-content-center bg-light border">Cover unavailable</div>
+                {% endif %}
+                <div>
+                    <span class="badge-soft mb-2">{{ spotlight_book.category.name|default:"General" }}</span>
+                    <h2 class="h4 mb-1">{{ spotlight_book.title }}</h2>
+                    <p class="small-muted mb-2">by {{ spotlight_book.author }}</p>
+                    <p class="mb-2"><span class="stars">★★★★★</span> {{ spotlight_book.avg_rating|default:0|floatformat:1 }} / 5</p>
+                    <a href="{% url 'core:book_detail' spotlight_book.pk %}" class="btn btn-gradient btn-sm">View details</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<section id="category-shelf" class="panel-card mb-4 mb-lg-5">
+    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+        <div>
+            <p class="text-uppercase small-muted mb-2">Browse by category</p>
+            <h2 class="section-title h3 mb-0">Browse genres that suit your reading mood</h2>
+        </div>
+        <p class="section-subtitle mb-0">Explore broad, familiar genres, then jump into a shelf to see popular starting points and highly rated titles.</p>
+    </div>
+    <div class="row g-3">
+        {% for category in category_showcase %}
+        <div class="col-md-6 col-xl-4">
+            <article class="category-card h-100">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                        <h3 class="category-title mb-1">{{ category.name }}</h3>
+                        <p class="small-muted mb-0">{{ category.book_count }} book{{ category.book_count|pluralize }}</p>
+                    </div>
+                    <a class="badge-soft" href="?category={{ category.id }}">Open shelf</a>
+                </div>
+                <p class="small-muted mb-3">{{ category.description }}</p>
+                <div class="category-books">
+                    {% for title in category.sample_books %}
+                    <div class="category-book-pill">{{ title }}</div>
+                    {% endfor %}
+                </div>
+            </article>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="row g-4 mb-4 mb-lg-5">
+    <div class="col-lg-8">
+        <div class="panel-card h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <p class="text-uppercase small-muted mb-2">Trending now</p>
+                    <h2 class="h4 mb-0">Popular picks from readers</h2>
+                </div>
+            </div>
+            {% if featured_books %}
+                <div class="row g-3">
+                    {% for book in featured_books %}
+                    <div class="col-md-4">
+                        <div class="top-pick-item h-100 align-items-start">
+                            <div class="top-pick-rank">{{ forloop.counter }}</div>
+                            <div>
+                                <h3 class="h6 mb-1">{{ book.title }}</h3>
+                                <p class="small-muted mb-1">{{ book.author }}</p>
+                                <p class="small-muted mb-2">{{ book.category.name|default:"General" }}</p>
+                                <a href="{% url 'core:book_detail' book.pk %}">Open book</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="small-muted mb-0">No featured picks yet. Check back as the community adds more ratings.</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="panel-card h-100">
+            <p class="text-uppercase small-muted mb-2">Recent discussion</p>
+            <h2 class="h4 mb-3">What readers are saying</h2>
+            {% if latest_comments %}
+                <div class="d-grid gap-3">
+                    {% for comment in latest_comments %}
+                    <div class="comment-mini-card">
+                        <p class="mb-2">“{{ comment.content|truncatechars:110 }}”</p>
+                        <p class="small-muted mb-0"><strong>{{ comment.user.username }}</strong> on {{ comment.book.title }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="small-muted mb-0">Reader comments will appear here as the community starts sharing reviews.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+{% endif %}
+
+<section id="catalogue" class="panel-card mb-4 mb-lg-5">
+    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+        <div>
+            <p class="text-uppercase small-muted mb-2">Browse the collection</p>
+            <h2 class="section-title h3 mb-0">Search, filter, and sort the catalogue</h2>
+        </div>
+        <p class="section-subtitle mb-0">Use genre filters, ratings, and search tools to move quickly through the collection and find books that fit your interests.</p>
+    </div>
+    <form method="get" class="row g-3 align-items-end filter-form" role="search" aria-label="Book catalogue search and filters">
+        <div class="col-lg-4">
+            <label for="search-input" class="form-label">Search books</label>
+            <input type="search" name="q" id="search-input" class="form-control" placeholder="Search by title or author" value="{{ search_query }}">
+        </div>
+        <div class="col-lg-3">
+            <label for="category-select" class="form-label">Category</label>
+            <select name="category" id="category-select" class="form-select">
+                <option value="">All categories</option>
+                {% for category in categories %}
+                <option value="{{ category.id }}" {% if selected_category == category.id|stringformat:'s' %}selected{% endif %}>{{ category.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-lg-3">
+            <label for="sort-select" class="form-label">Sort by</label>
+            <select name="sort" id="sort-select" class="form-select">
+                <option value="top" {% if selected_sort == 'top' %}selected{% endif %}>Top rated</option>
+                <option value="discussion" {% if selected_sort == 'discussion' %}selected{% endif %}>Most discussed</option>
+                <option value="latest" {% if selected_sort == 'latest' %}selected{% endif %}>Newest first</option>
+                <option value="title" {% if selected_sort == 'title' %}selected{% endif %}>Title A–Z</option>
+            </select>
+        </div>
+        <div class="col-lg-2 d-grid">
+            <button type="submit" class="btn btn-gradient">Apply</button>
+        </div>
+    </form>
+</section>
+
+<div class="row g-4 mb-4">
+    {% for book in books %}
+        <div class="col-sm-6 col-xl-4">
+            <article class="book-card book-card-upgraded position-relative d-flex flex-column h-100">
+                <div class="book-cover-frame position-relative">
+                    {% if book.display_cover_url %}
+                        <img src="{{ book.display_cover_url }}" alt="Cover of {{ book.title }}" loading="lazy">
+                    {% else %}
+                        <div class="book-cover-placeholder rounded-4 d-flex align-items-center justify-content-center">Cover unavailable</div>
+                    {% endif %}
+                    <div class="book-card-overlay">
+                        <span class="badge-soft">{{ book.category.name|default:"General" }}</span>
+                    </div>
+                </div>
+                <div class="p-4 d-flex flex-column flex-grow-1 book-card-body">
+                    <div class="book-copy-block">
+                        <h3 class="h4 mb-1 book-card-title">{{ book.title }}</h3>
+                        <p class="small-muted mb-3 book-card-author">by {{ book.author }}</p>
+                        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                            <span class="stars">★★★★★</span>
+                            <span class="small-muted">{{ book.avg_rating|default:0|floatformat:1 }} / 5 · {{ book.rating_count }} rating{{ book.rating_count|pluralize }}</span>
+                        </div>
+                        <p class="small-muted mb-0 book-card-description">{{ book.description|truncatechars:135 }}</p>
+                    </div>
+
+                    <div class="book-card-actions mt-auto pt-4 d-flex flex-wrap gap-2 align-items-center">
+                        <a href="{% url 'core:book_detail' book.pk %}" class="btn btn-gradient btn-detail-primary">View details</a>
+                        <a href="{% url 'core:book_detail' book.pk %}" class="btn btn-soft btn-detail-secondary">Read more</a>
+                    </div>
+                </div>
+            </article>
+        </div>
+    {% empty %}
+        <div class="col-12">
+            <div class="panel-card text-center py-5">
+                <h2 class="h4">No books found</h2>
+                <p class="small-muted mb-0">Try a different keyword, choose another category, or clear your filters.</p>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+{% include "includes/pagination.html" %}
+{% endblock %}
